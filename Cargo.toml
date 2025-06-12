@@ -12,3 +12,14 @@ eyre = "0.6.12"
 humantime = "2.2.0"
 reqwest = "0.12.20"
 tokio = { version = "1.45.1", features = ["full"] }
+
+# Enable max optimizations for dependencies, but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = "z"   # Optimize for size.
+lto = true        # Enable Link Time Optimization for better performance.
+strip = true      # Automatically strip symbols from the binary.
+codegen-units = 1 # Most optimized when using a single thread to compile; max context
+panic = "abort"   # Smallest panic code size.
