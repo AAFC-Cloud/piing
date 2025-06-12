@@ -111,3 +111,7 @@ Thu, 12 Jun 2025 08:48:12 -0400 - TCP Connect: SUCCESS - Duration: 33.5ms
 - Full HTTP request/response cycle
 - Includes all network, TLS, HTTP, and server processing overhead
 - Useful for testing complete application stack
+
+## Copyright
+
+Copyright belongs to © His Majesty the King in Right of Canada, as represented by the Minister of Agriculture and Agri-Food, 2025.

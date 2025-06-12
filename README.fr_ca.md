@@ -111,3 +111,7 @@ Thu, 12 Jun 2025 08:48:12 -0400 - TCP Connect: SUCCESS - Duration: 33.5ms
 - Cycle complet de requête/réponse HTTP
 - Inclut tous les frais généraux de réseau, TLS, HTTP et traitement serveur
 - Utile pour tester la pile d'applications complète
+
+## Droits d’auteur
+
+Droits d’auteur appartiennent à © Sa Majesté le Roi du chef du Canada, qui est représenté par le ministre de l’Agriculture et de l’Agroalimentaire, 2025
