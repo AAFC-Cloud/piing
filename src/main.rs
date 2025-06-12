@@ -9,6 +9,7 @@ use tokio::net::TcpStream;
 #[derive(Parser)]
 #[command(name = "piing")]
 #[command(about = "A simple HTTP ping utility")]
+#[command(version)]
 struct Args {
     /// Destination URL to ping
     destination: String,
