@@ -27,7 +27,7 @@ A modern HTTP and TCP ping utility written in Rust. Piing provides multiple meas
 ### Build from Source
 
 ```powershell
-git clone https://github.com/your-username/piing.git
+git clone https://github.com/AAFC-Cloud/piing
 cd piing
 cargo build --release
 ```
