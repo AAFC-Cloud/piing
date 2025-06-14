@@ -5,34 +5,42 @@ use reqwest::Client;
 use std::time::{Duration, Instant};
 use tokio::time;
 use tokio::net::TcpStream;
+use clap::ValueEnum;
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum Mode {
+    Icmp,
+    Tcp,
+    HttpGet,
+    HttpHead,
+}
+
+impl Mode {
+    fn description(&self) -> &'static str {
+        match self {
+            Mode::Icmp => "ICMP",
+            Mode::Tcp => "TCP",
+            Mode::HttpGet => "HTTP GET",
+            Mode::HttpHead => "HEAD",
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "piing")]
 #[command(about = "A simple HTTP ping utility")]
 #[command(version)]
 struct Args {
-    /// Destination URL to ping
+    /// Destination URL or host to ping
     destination: String,
 
     /// Refresh interval (e.g., "1s", "500ms", "2.5s")
     #[arg(short, long, default_value = "1s", value_parser=humantime::parse_duration)]
     interval: Duration,
 
-    /// Use TCP connect instead of HTTP for more accurate ping-like measurement
-    #[arg(long)]
-    tcp: bool,
-
-    /// Use HTTP HEAD instead of GET (no response body)
-    #[arg(long)]
-    head: bool,
-
-    /// Port to use for TCP ping (default: 80 for HTTP, 443 for HTTPS)
-    #[arg(short, long)]
-    port: Option<u16>,
-
-    /// Use ICMP echo (real ping) instead of HTTP/TCP
-    #[arg(long)]
-    icmp: bool,
+    /// Ping mode: icmp, tcp, http-get, http-head
+    #[arg(long, value_enum, default_value_t = Mode::Icmp)]
+    mode: Mode,
 }
 
 async fn tcp_ping(host: &str, port: u16) -> Result<Duration, Box<dyn std::error::Error + Send + Sync>> {
@@ -67,18 +75,50 @@ async fn icmp_ping(host: &str) -> Result<Duration, Box<dyn std::error::Error + S
     }
 }
 
-fn parse_destination(destination: &str) -> (String, String, u16) {
+fn parse_destination(destination: &str, mode: Mode) -> (String, String, u16) {
+    // Returns (url, host, port)
     if destination.starts_with("http://") {
         let host = destination.trim_start_matches("http://");
         let host = host.split('/').next().unwrap_or(host);
-        (destination.to_string(), host.to_string(), 80)
+        let port = if let Some(port_str) = host.split(':').nth(1) {
+            port_str.parse().unwrap_or(80)
+        } else {
+            80
+        };
+        (destination.to_string(), host.split(':').next().unwrap_or(host).to_string(), port)
     } else if destination.starts_with("https://") {
         let host = destination.trim_start_matches("https://");
         let host = host.split('/').next().unwrap_or(host);
-        (destination.to_string(), host.to_string(), 443)
+        let port = if let Some(port_str) = host.split(':').nth(1) {
+            port_str.parse().unwrap_or(443)
+        } else {
+            443
+        };
+        (destination.to_string(), host.split(':').next().unwrap_or(host).to_string(), port)
     } else {
-        // Assume HTTPS for URL, but extract host for TCP
-        (format!("https://{}", destination), destination.to_string(), 443)
+        // For TCP, allow host:port, otherwise default to 443 for ICMP/HTTP
+        let (host, port) = if let Some((h, p)) = destination.rsplit_once(':') {
+            if let Ok(port) = p.parse() {
+                (h.to_string(), port)
+            } else {
+                (destination.to_string(), match mode {
+                    Mode::Tcp => 80,
+                    Mode::HttpGet | Mode::HttpHead => 443,
+                    Mode::Icmp => 443,
+                })
+            }
+        } else {
+            (destination.to_string(), match mode {
+                Mode::Tcp => 80,
+                Mode::HttpGet | Mode::HttpHead => 443,
+                Mode::Icmp => 443,
+            })
+        };
+        let url = match mode {
+            Mode::HttpGet | Mode::HttpHead => format!("https://{}:{}", host, port),
+            _ => host.clone(),
+        };
+        (url, host, port)
     }
 }
 
@@ -87,122 +127,139 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
 
     let args = Args::parse();
+    let mode = args.mode;
 
-    let (url, host, default_port) = parse_destination(&args.destination);
-    let port = args.port.unwrap_or(default_port);
+    let (url, host, port) = parse_destination(&args.destination, mode);
 
     let client = Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
 
-    if args.icmp {
-        println!(
-            "ICMP pinging {} every {}",
-            host.cyan(),
-            humantime::format_duration(args.interval).cyan()
-        );
-    } else if args.tcp {
-        println!(
-            "TCP pinging {}:{} every {}",
-            host.cyan(),
-            port.to_string().cyan(),
-            humantime::format_duration(args.interval).cyan()
-        );
-    } else {
-        println!(
-            "{} pinging {} every {}",
-            if args.head { "HEAD" } else { "HTTP GET" },
-            url.cyan(),
-            humantime::format_duration(args.interval).cyan()
-        );
-    }
+    println!(
+        "{} pinging {}{} every {}",
+        mode.description(),
+        host.cyan(),
+        if let Mode::Tcp = mode {
+            format!(":{}", port).cyan().to_string()
+        } else {
+            String::new()
+        },
+        humantime::format_duration(args.interval).cyan()
+    );
     println!();
 
     loop {
         let current_time = chrono::Local::now().to_rfc2822();
 
-        if args.icmp {
-            match icmp_ping(&host).await {
-                Ok(duration) => {
-                    let duration_str = format!("{:.1}ms", duration.as_micros() as f64 / 1000.0);
-                    let colored_duration = if duration.as_millis() > 500 {
-                        duration_str.red().to_string()
-                    } else if duration.as_millis() > 100 {
-                        duration_str.yellow().to_string()
-                    } else {
-                        duration_str.green().to_string()
-                    };
-                    println!(
-                        "{} - ICMP Echo: {} - Duration: {}",
-                        current_time,
-                        "SUCCESS".green(),
-                        colored_duration
-                    );
-                }
-                Err(e) => {
-                    println!(
-                        "{} - ICMP Echo: {} - Error: {}",
-                        current_time,
-                        "FAILED".red(),
-                        e.to_string().red()
-                    );
-                }
-            }
-        } else if args.tcp {
-            // TCP connect measurement - most accurate for ping-like behavior
-            match tcp_ping(&host, port).await {
-                Ok(duration) => {
-                    let duration_str = format!("{:.1}ms", duration.as_micros() as f64 / 1000.0);
-                    let colored_duration = if duration.as_millis() > 500 {
-                        duration_str.red().to_string()
-                    } else if duration.as_millis() > 100 {
-                        duration_str.yellow().to_string()
-                    } else {
-                        duration_str.green().to_string()
-                    };
-
-                    println!(
-                        "{} - TCP Connect: {} - Duration: {}",
-                        current_time,
-                        "SUCCESS".green(),
-                        colored_duration
-                    );
-                }
-                Err(e) => {
-                    println!(
-                        "{} - TCP Connect: {} - Error: {}",
-                        current_time,
-                        "FAILED".red(),
-                        e.to_string().red()
-                    );
+        match mode {
+            Mode::Icmp => {
+                match icmp_ping(&host).await {
+                    Ok(duration) => {
+                        let duration_str = format!("{:.1}ms", duration.as_micros() as f64 / 1000.0);
+                        let colored_duration = if duration.as_millis() > 500 {
+                            duration_str.red().to_string()
+                        } else if duration.as_millis() > 100 {
+                            duration_str.yellow().to_string()
+                        } else {
+                            duration_str.green().to_string()
+                        };
+                        println!(
+                            "{} - ICMP Echo: {} - Duration: {}",
+                            current_time,
+                            "SUCCESS".green(),
+                            colored_duration
+                        );
+                    }
+                    Err(e) => {
+                        println!(
+                            "{} - ICMP Echo: {} - Error: {}",
+                            current_time,
+                            "FAILED".red(),
+                            e.to_string().red()
+                        );
+                    }
                 }
             }
-        } else {
-            // HTTP measurement
-            match http_ping(&client, &url, args.head).await {
-                Ok((duration, status_code)) => {
-                    let duration_str = format!("{:.1}ms", duration.as_micros() as f64 / 1000.0);
-                    let colored_duration = if duration.as_millis() > 500 {
-                        duration_str.red().to_string()
-                    } else if duration.as_millis() > 100 {
-                        duration_str.yellow().to_string()
-                    } else {
-                        duration_str.green().to_string()
-                    };
-
-                    println!(
-                        "{} - Status: {} - Duration: {}",
-                        current_time,
-                        status_code.to_string().green(),
-                        colored_duration
-                    );
+            Mode::Tcp => {
+                match tcp_ping(&host, port).await {
+                    Ok(duration) => {
+                        let duration_str = format!("{:.1}ms", duration.as_micros() as f64 / 1000.0);
+                        let colored_duration = if duration.as_millis() > 500 {
+                            duration_str.red().to_string()
+                        } else if duration.as_millis() > 100 {
+                            duration_str.yellow().to_string()
+                        } else {
+                            duration_str.green().to_string()
+                        };
+                        println!(
+                            "{} - TCP Connect: {} - Duration: {}",
+                            current_time,
+                            "SUCCESS".green(),
+                            colored_duration
+                        );
+                    }
+                    Err(e) => {
+                        println!(
+                            "{} - TCP Connect: {} - Error: {}",
+                            current_time,
+                            "FAILED".red(),
+                            e.to_string().red()
+                        );
+                    }
                 }
-                Err(e) => {
-                    println!(
-                        "{} - Error: {}",
-                        current_time,
-                        e.to_string().red()
-                    );
+            }
+            Mode::HttpHead => {
+                match http_ping(&client, &url, true).await {
+                    Ok((duration, status_code)) => {
+                        let duration_str = format!("{:.1}ms", duration.as_micros() as f64 / 1000.0);
+                        let colored_duration = if duration.as_millis() > 500 {
+                            duration_str.red().to_string()
+                        } else if duration.as_millis() > 100 {
+                            duration_str.yellow().to_string()
+                        } else {
+                            duration_str.green().to_string()
+                        };
+                        println!(
+                            "{} - Status: {} - Duration: {}",
+                            current_time,
+                            status_code.to_string().green(),
+                            colored_duration
+                        );
+                    }
+                    Err(e) => {
+                        println!(
+                            "{} - Error: {}",
+                            current_time,
+                            e.to_string().red()
+                        );
+                    }
+                }
+            }
+            Mode::HttpGet => {
+                match http_ping(&client, &url, false).await {
+                    Ok((duration, status_code)) => {
+                        let duration_str = format!("{:.1}ms", duration.as_micros() as f64 / 1000.0);
+                        let colored_duration = if duration.as_millis() > 500 {
+                            duration_str.red().to_string()
+                        } else if duration.as_millis() > 100 {
+                            duration_str.yellow().to_string()
+                        } else {
+                            duration_str.green().to_string()
+                        };
+                        println!(
+                            "{} - Status: {} - Duration: {}",
+                            current_time,
+                            status_code.to_string().green(),
+                            colored_duration
+                        );
+                    }
+                    Err(e) => {
+                        println!(
+                            "{} - Error: {}",
+                            current_time,
+                            e.to_string().red()
+                        );
+                    }
                 }
             }
         }
