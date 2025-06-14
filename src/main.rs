@@ -29,6 +29,10 @@ struct Args {
     /// Port to use for TCP ping (default: 80 for HTTP, 443 for HTTPS)
     #[arg(short, long)]
     port: Option<u16>,
+
+    /// Use ICMP echo (real ping) instead of HTTP/TCP
+    #[arg(long)]
+    icmp: bool,
 }
 
 async fn tcp_ping(host: &str, port: u16) -> Result<Duration, Box<dyn std::error::Error + Send + Sync>> {
@@ -46,6 +50,21 @@ async fn http_ping(client: &Client, url: &str, use_head: bool) -> Result<(Durati
     };
     let duration = start_time.elapsed();
     Ok((duration, response.status()))
+}
+
+async fn icmp_ping(host: &str) -> Result<Duration, Box<dyn std::error::Error + Send + Sync>> {
+    use ping::ping;
+    use std::net::ToSocketAddrs;
+    let addr = format!("{}:0", host);
+    let ip = addr.to_socket_addrs()?.next().ok_or("Unable to resolve host")?.ip();
+    let start_time = Instant::now();
+    let timeout = Some(Duration::from_secs(2));
+    // The ping crate expects: ip, timeout, ttl, ident, seq_cnt, payload
+    // We'll use defaults for all except ip and timeout
+    match ping(ip, timeout, None, None, None, None) {
+        Ok(()) => Ok(start_time.elapsed()),
+        Err(e) => Err(Box::new(e)),
+    }
 }
 
 fn parse_destination(destination: &str) -> (String, String, u16) {
@@ -76,7 +95,13 @@ async fn main() -> Result<()> {
         .timeout(Duration::from_secs(10))
         .build()?;
 
-    if args.tcp {
+    if args.icmp {
+        println!(
+            "ICMP pinging {} every {}",
+            host.cyan(),
+            humantime::format_duration(args.interval).cyan()
+        );
+    } else if args.tcp {
         println!(
             "TCP pinging {}:{} every {}",
             host.cyan(),
@@ -96,7 +121,34 @@ async fn main() -> Result<()> {
     loop {
         let current_time = chrono::Local::now().to_rfc2822();
 
-        if args.tcp {
+        if args.icmp {
+            match icmp_ping(&host).await {
+                Ok(duration) => {
+                    let duration_str = format!("{:.1}ms", duration.as_micros() as f64 / 1000.0);
+                    let colored_duration = if duration.as_millis() > 500 {
+                        duration_str.red().to_string()
+                    } else if duration.as_millis() > 100 {
+                        duration_str.yellow().to_string()
+                    } else {
+                        duration_str.green().to_string()
+                    };
+                    println!(
+                        "{} - ICMP Echo: {} - Duration: {}",
+                        current_time,
+                        "SUCCESS".green(),
+                        colored_duration
+                    );
+                }
+                Err(e) => {
+                    println!(
+                        "{} - ICMP Echo: {} - Error: {}",
+                        current_time,
+                        "FAILED".red(),
+                        e.to_string().red()
+                    );
+                }
+            }
+        } else if args.tcp {
             // TCP connect measurement - most accurate for ping-like behavior
             match tcp_ping(&host, port).await {
                 Ok(duration) => {
