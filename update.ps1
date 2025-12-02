@@ -1,3 +1,4 @@
+cargo build --release
 $old_exe = Get-Command piing.exe | Select-Object -ExpandProperty Source
 if (-not (Test-Path $old_exe)) {
     Write-Error "Could not find piing.exe in your path!"
