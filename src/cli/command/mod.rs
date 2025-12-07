@@ -1,5 +1,5 @@
 pub mod audit;
-pub mod command;
+mod command;
 pub mod host;
 pub mod interval;
 pub mod mode;

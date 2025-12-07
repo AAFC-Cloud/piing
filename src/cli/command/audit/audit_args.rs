@@ -6,6 +6,8 @@ use eyre::Result;
 pub struct AuditArgs {}
 
 impl AuditArgs {
+    /// # Errors
+    /// Returns an error if reading the logs directory fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         println!("Discovering log files...\n");
 
@@ -20,14 +22,12 @@ impl AuditArgs {
 
         if let Ok(entries) = std::fs::read_dir(logs_dir) {
             for entry in entries.flatten() {
-                if let Ok(metadata) = entry.metadata() {
-                    if metadata.is_file() {
-                        if let Some(ext) = entry.path().extension() {
-                            if ext == "ndjson" || ext == "log" {
-                                log_files.push(entry.path());
-                            }
-                        }
-                    }
+                if let Ok(metadata) = entry.metadata()
+                    && metadata.is_file()
+                    && let Some(ext) = entry.path().extension()
+                    && (ext == "ndjson" || ext == "log")
+                {
+                    log_files.push(entry.path());
                 }
             }
         }

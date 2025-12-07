@@ -13,6 +13,8 @@ pub enum IntervalCommand {
 }
 
 impl IntervalCommand {
+    /// # Errors
+    /// Returns an error if the interval subcommand fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         match self {
             IntervalCommand::Set(args) => args.invoke(dirs),

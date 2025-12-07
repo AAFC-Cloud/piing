@@ -29,7 +29,9 @@ impl Default for Command {
 }
 
 impl Command {
-    pub fn invoke(self, globals: GlobalArgs, dirs: PiingDirs) -> Result<()> {
+    /// # Errors
+    /// Returns an error if command execution or logging initialization fails
+    pub fn invoke(self, globals: GlobalArgs, dirs: &PiingDirs) -> Result<()> {
         use crate::logging::LogWritingBehaviour;
         use crate::logging::{self};
 
@@ -54,14 +56,14 @@ impl Command {
         };
 
         // Initialize logging for all commands
-        logging::initialize(globals.log_level(), &dirs, log_behaviour)?;
+        logging::initialize(globals.log_level(), dirs, log_behaviour)?;
 
         match self {
             Command::Run(args) => args.invoke(globals, dirs),
-            Command::Host(args) => args.invoke(&dirs),
-            Command::Mode(args) => args.invoke(&dirs),
-            Command::Interval(args) => args.invoke(&dirs),
-            Command::Audit(args) => args.invoke(&dirs),
+            Command::Host(args) => args.invoke(dirs),
+            Command::Mode(args) => args.invoke(dirs),
+            Command::Interval(args) => args.invoke(dirs),
+            Command::Audit(args) => args.invoke(dirs),
         }
     }
 }

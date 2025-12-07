@@ -17,6 +17,8 @@ pub struct PiingDirs {
 }
 
 impl PiingDirs {
+    /// # Errors
+    /// Returns an error if directory creation fails
     pub fn ensure() -> Result<Self> {
         let base = resolve_home_dir()?;
         std::fs::create_dir_all(&base).wrap_err("Failed to create PIING home directory")?;
@@ -30,26 +32,32 @@ impl PiingDirs {
         Ok(Self { home, logs, config })
     }
 
+    #[must_use]
     pub fn home_dir(&self) -> &Path {
         &self.home
     }
 
+    #[must_use]
     pub fn logs_dir(&self) -> &Path {
         &self.logs
     }
 
+    #[must_use]
     pub fn config_dir(&self) -> &Path {
         &self.config
     }
 
+    #[must_use]
     pub fn hosts_file(&self) -> PathBuf {
         self.config.join("hosts.txt")
     }
 
+    #[must_use]
     pub fn mode_file(&self) -> PathBuf {
         self.config.join("mode.txt")
     }
 
+    #[must_use]
     pub fn interval_file(&self) -> PathBuf {
         self.config.join("interval.txt")
     }
@@ -64,13 +72,9 @@ fn resolve_home_dir() -> Result<PathBuf> {
         return Ok(path);
     }
 
-    unsafe {
-        let raw_path = SHGetKnownFolderPath(&FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, None)
-            .wrap_err("Failed to resolve %APPDATA%")?;
-        let owned = raw_path
-            .to_string()
-            .wrap_err("Failed to convert path to string")?;
-        CoTaskMemFree(Some(raw_path.0 as *const c_void));
-        Ok(PathBuf::from(owned).join("TeamDman").join("piing"))
-    }
+    let raw_path = unsafe { SHGetKnownFolderPath(&FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, None) }
+        .wrap_err("Failed to resolve %APPDATA%")?;
+    let owned = unsafe { raw_path.to_string() }.wrap_err("Failed to convert path to string")?;
+    unsafe { CoTaskMemFree(Some(raw_path.0 as *const c_void)) };
+    Ok(PathBuf::from(owned).join("TeamDman").join("piing"))
 }

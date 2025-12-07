@@ -10,6 +10,8 @@ use crate::cli::Cli;
 use clap::CommandFactory;
 use clap::FromArgMatches;
 
+/// # Errors
+/// Returns an error if command execution fails
 pub fn main() -> eyre::Result<()> {
     color_eyre::install()?;
     let cli = Cli::command();

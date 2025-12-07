@@ -2,7 +2,6 @@ use crate::config::ConfigManager;
 use crate::home::PiingDirs;
 use eyre::Result;
 use eyre::eyre;
-use humantime;
 use std::io::Write;
 use std::process::Command;
 use std::sync::OnceLock;
@@ -22,7 +21,34 @@ use windows::Win32::Foundation::LRESULT;
 use windows::Win32::Foundation::POINT;
 use windows::Win32::Foundation::WPARAM;
 use windows::Win32::System::Console::ATTACH_PARENT_PROCESS;
-use windows::Win32::UI::WindowsAndMessaging::*;
+use windows::Win32::UI::WindowsAndMessaging::AppendMenuW;
+use windows::Win32::UI::WindowsAndMessaging::CreatePopupMenu;
+use windows::Win32::UI::WindowsAndMessaging::DefWindowProcW;
+use windows::Win32::UI::WindowsAndMessaging::DestroyMenu;
+use windows::Win32::UI::WindowsAndMessaging::DestroyWindow;
+use windows::Win32::UI::WindowsAndMessaging::EnableMenuItem;
+use windows::Win32::UI::WindowsAndMessaging::GWLP_USERDATA;
+use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+use windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW;
+use windows::Win32::UI::WindowsAndMessaging::MF_BYCOMMAND;
+use windows::Win32::UI::WindowsAndMessaging::MF_GRAYED;
+use windows::Win32::UI::WindowsAndMessaging::MF_SEPARATOR;
+use windows::Win32::UI::WindowsAndMessaging::MF_STRING;
+use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
+use windows::Win32::UI::WindowsAndMessaging::PostQuitMessage;
+use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
+use windows::Win32::UI::WindowsAndMessaging::SetWindowLongPtrW;
+use windows::Win32::UI::WindowsAndMessaging::TPM_LEFTALIGN;
+use windows::Win32::UI::WindowsAndMessaging::TPM_RETURNCMD;
+use windows::Win32::UI::WindowsAndMessaging::TPM_RIGHTBUTTON;
+use windows::Win32::UI::WindowsAndMessaging::TPM_TOPALIGN;
+use windows::Win32::UI::WindowsAndMessaging::TrackPopupMenu;
+use windows::Win32::UI::WindowsAndMessaging::WM_CLOSE;
+use windows::Win32::UI::WindowsAndMessaging::WM_CONTEXTMENU;
+use windows::Win32::UI::WindowsAndMessaging::WM_CREATE;
+use windows::Win32::UI::WindowsAndMessaging::WM_DESTROY;
+use windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONDBLCLK;
+use windows::Win32::UI::WindowsAndMessaging::WM_RBUTTONUP;
 use windows::core::PCWSTR;
 use windows::core::w;
 
@@ -96,11 +122,11 @@ impl TrayWindowState {
         if !self.can_show_logs() {
             return;
         }
-        if self.console_mode == ConsoleMode::Inherited {
-            if let Err(error) = console_detach() {
-                error!("Failed to detach console: {error}");
-                return;
-            }
+        if self.console_mode == ConsoleMode::Inherited
+            && let Err(error) = console_detach()
+        {
+            error!("Failed to detach console: {error}");
+            return;
         }
         if let Err(error) = console_create() {
             error!("Failed to allocate console: {error}");
@@ -169,25 +195,36 @@ impl TrayWindowState {
             }
         };
 
-        unsafe {
-            let _ = AppendMenuW(menu, MF_STRING, CMD_SHOW_LOGS, w!("Show logs"));
-            let _ = AppendMenuW(menu, MF_STRING, CMD_HIDE_LOGS, w!("Hide logs"));
-            let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
-            let _ = AppendMenuW(menu, MF_STRING, CMD_OPEN_HOME, w!("Open home folder"));
-            let _ = AppendMenuW(menu, MF_STRING, CMD_RELOAD_CONFIG, w!("Reload config"));
-            let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
-            let _ = AppendMenuW(menu, MF_STRING, CMD_EXIT_APP, w!("Exit"));
+        unsafe { AppendMenuW(menu, MF_STRING, CMD_SHOW_LOGS, w!("Show logs")) }.ok();
+        unsafe { AppendMenuW(menu, MF_STRING, CMD_HIDE_LOGS, w!("Hide logs")) }.ok();
+        unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null()) }.ok();
+        unsafe { AppendMenuW(menu, MF_STRING, CMD_OPEN_HOME, w!("Open home folder")) }.ok();
+        unsafe { AppendMenuW(menu, MF_STRING, CMD_RELOAD_CONFIG, w!("Reload config")) }.ok();
+        unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null()) }.ok();
+        unsafe { AppendMenuW(menu, MF_STRING, CMD_EXIT_APP, w!("Exit")) }.ok();
 
-            if !self.can_show_logs() {
-                let _ = EnableMenuItem(menu, CMD_SHOW_LOGS as u32, MF_BYCOMMAND | MF_GRAYED);
-            }
-            if !self.can_hide_logs() {
-                let _ = EnableMenuItem(menu, CMD_HIDE_LOGS as u32, MF_BYCOMMAND | MF_GRAYED);
-            }
+        if !self.can_show_logs() {
+            let _ = unsafe {
+                EnableMenuItem(
+                    menu,
+                    CMD_SHOW_LOGS.try_into().expect("CMD_SHOW_LOGS fits in u32"),
+                    MF_BYCOMMAND | MF_GRAYED,
+                )
+            };
+        }
+        if !self.can_hide_logs() {
+            let _ = unsafe {
+                EnableMenuItem(
+                    menu,
+                    CMD_HIDE_LOGS.try_into().expect("CMD_HIDE_LOGS fits in u32"),
+                    MF_BYCOMMAND | MF_GRAYED,
+                )
+            };
         }
 
         let mut cursor_pos = POINT::default();
-        unsafe { GetCursorPos(&mut cursor_pos) }.ok();
+        unsafe { GetCursorPos(&raw mut cursor_pos) }.ok();
+        #[allow(clippy::cast_sign_loss)]
         let selection = unsafe {
             TrackPopupMenu(
                 menu,
@@ -199,11 +236,12 @@ impl TrayWindowState {
                 None,
             )
         }
-        .0 as usize;
+        .0;
 
         unsafe { DestroyMenu(menu) }.ok();
 
-        match selection {
+        #[allow(clippy::cast_sign_loss)]
+        match selection as usize {
             CMD_SHOW_LOGS => self.show_logs(),
             CMD_HIDE_LOGS => self.hide_logs(),
             CMD_OPEN_HOME => self.open_home_folder(),
@@ -244,22 +282,22 @@ pub unsafe extern "system" fn window_proc(
     lparam: LPARAM,
 ) -> LRESULT {
     match message {
-        WM_CREATE => match CONFIG.get() {
-            Some(config) => {
+        WM_CREATE => {
+            if let Some(config) = CONFIG.get() {
                 store_state(hwnd, Box::new(TrayWindowState::new(config)));
                 LRESULT(0)
-            }
-            None => {
+            } else {
                 error!("Tray config missing");
                 LRESULT(-1)
             }
-        },
+        }
         WM_USER_TRAY_CALLBACK => {
+            #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
             match lparam.0 as u32 {
                 WM_RBUTTONUP | WM_CONTEXTMENU => {
-                    with_state(hwnd, |state| state.show_context_menu(hwnd))
+                    with_state(hwnd, |state| state.show_context_menu(hwnd));
                 }
-                WM_LBUTTONDBLCLK => with_state(hwnd, |state| state.show_logs()),
+                WM_LBUTTONDBLCLK => with_state(hwnd, TrayWindowState::show_logs),
                 _ => {}
             }
             LRESULT(0)

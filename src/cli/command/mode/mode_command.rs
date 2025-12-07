@@ -13,6 +13,8 @@ pub enum ModeCommand {
 }
 
 impl ModeCommand {
+    /// # Errors
+    /// Returns an error if the mode subcommand fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         match self {
             ModeCommand::Set(args) => args.invoke(dirs),

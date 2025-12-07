@@ -10,6 +10,8 @@ pub struct ModeArgs {
 }
 
 impl ModeArgs {
+    /// # Errors
+    /// Returns an error if the mode command fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         self.command.invoke(dirs)
     }

@@ -10,6 +10,8 @@ pub struct ModeSetArgs {
 }
 
 impl ModeSetArgs {
+    /// # Errors
+    /// Returns an error if writing the mode config fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;

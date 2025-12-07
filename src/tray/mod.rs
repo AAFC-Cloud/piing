@@ -14,6 +14,7 @@ use tokio::sync::watch;
 use tracing::info;
 use windows::core::w;
 
+#[derive(Debug)]
 pub struct TrayContext {
     pub inherited_console_available: bool,
     pub config_manager: ConfigManager,
@@ -21,7 +22,9 @@ pub struct TrayContext {
     pub shutdown_tx: watch::Sender<bool>,
 }
 
-pub fn run_tray(context: TrayContext) -> Result<()> {
+/// # Errors
+/// Returns an error if tray initialization or message loop fails
+pub fn run_tray(context: &TrayContext) -> Result<()> {
     let started_with_inherited_console = context.inherited_console_available;
     hide_default_console_or_attach_ctrl_handler()?;
 

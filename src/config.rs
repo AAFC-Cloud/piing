@@ -21,16 +21,22 @@ pub struct ConfigStore {
 }
 
 impl ConfigStore {
+    #[must_use]
     pub fn new(initial: ConfigSnapshot) -> Self {
         Self {
             inner: Arc::new(RwLock::new(initial)),
         }
     }
 
+    /// # Panics
+    /// Panics if the internal lock is poisoned
+    #[must_use]
     pub fn snapshot(&self) -> ConfigSnapshot {
         self.inner.read().unwrap().clone()
     }
 
+    /// # Panics
+    /// Panics if the internal lock is poisoned
     pub fn replace(&self, snapshot: ConfigSnapshot) {
         *self.inner.write().unwrap() = snapshot;
     }
@@ -44,6 +50,7 @@ pub struct ConfigPaths {
 }
 
 impl ConfigPaths {
+    #[must_use]
     pub fn new(dirs: &PiingDirs) -> Self {
         Self {
             hosts: dirs.hosts_file(),
@@ -52,6 +59,8 @@ impl ConfigPaths {
         }
     }
 
+    /// # Errors
+    /// Returns an error if writing default files fails
     pub fn ensure_defaults(&self) -> Result<()> {
         if !self.hosts.exists() {
             fs::write(&self.hosts, "teksavvy.ca\n")
@@ -66,6 +75,8 @@ impl ConfigPaths {
         Ok(())
     }
 
+    /// # Errors
+    /// Returns an error if writing the hosts file fails
     pub fn write_hosts(&self, hosts: &[String]) -> Result<()> {
         let mut data = String::new();
         for host in hosts {
@@ -78,10 +89,14 @@ impl ConfigPaths {
         fs::write(&self.hosts, data).wrap_err("Failed to write hosts file")
     }
 
+    /// # Errors
+    /// Returns an error if writing the mode file fails
     pub fn write_mode(&self, mode: PingMode) -> Result<()> {
         fs::write(&self.mode, mode.as_str()).wrap_err("Failed to write mode file")
     }
 
+    /// # Errors
+    /// Returns an error if writing the interval file fails
     pub fn write_interval(&self, interval: Duration) -> Result<()> {
         fs::write(
             &self.interval,
@@ -90,6 +105,8 @@ impl ConfigPaths {
         .wrap_err("Failed to write interval file")
     }
 
+    /// # Errors
+    /// Returns an error if reading config files fails
     pub fn load_snapshot(&self) -> Result<ConfigSnapshot> {
         let hosts = if self.hosts.exists() {
             fs::read_to_string(&self.hosts)?
@@ -128,14 +145,17 @@ impl ConfigPaths {
         })
     }
 
+    #[must_use]
     pub fn hosts_path(&self) -> &PathBuf {
         &self.hosts
     }
 
+    #[must_use]
     pub fn mode_path(&self) -> &PathBuf {
         &self.mode
     }
 
+    #[must_use]
     pub fn interval_path(&self) -> &PathBuf {
         &self.interval
     }
@@ -148,6 +168,8 @@ pub struct ConfigManager {
 }
 
 impl ConfigManager {
+    /// # Errors
+    /// Returns an error if config initialization fails
     pub fn initialize(dirs: &PiingDirs) -> Result<Self> {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;
@@ -156,6 +178,8 @@ impl ConfigManager {
         Ok(Self { paths, store })
     }
 
+    /// # Errors
+    /// Returns an error if reloading config files fails
     pub fn reload(&self) -> Result<ConfigSnapshot> {
         let snapshot = self.paths.load_snapshot()?;
         self.store.replace(snapshot.clone());

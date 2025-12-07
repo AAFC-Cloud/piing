@@ -11,6 +11,8 @@ pub struct IntervalSetArgs {
 }
 
 impl IntervalSetArgs {
+    /// # Errors
+    /// Returns an error if writing the interval config fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;

@@ -7,6 +7,8 @@ use eyre::Result;
 pub struct IntervalShowArgs {}
 
 impl IntervalShowArgs {
+    /// # Errors
+    /// Returns an error if loading the config fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;

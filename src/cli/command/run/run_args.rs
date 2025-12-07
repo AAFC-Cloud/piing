@@ -8,7 +8,9 @@ use eyre::Result;
 pub struct RunArgs {}
 
 impl RunArgs {
-    pub fn invoke(self, _globals: GlobalArgs, dirs: PiingDirs) -> Result<()> {
+    /// # Errors
+    /// Returns an error if the runtime fails to start
+    pub fn invoke(self, _globals: GlobalArgs, dirs: &PiingDirs) -> Result<()> {
         runtime::run(dirs)
     }
 }

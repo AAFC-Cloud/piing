@@ -10,6 +10,8 @@ pub struct HostArgs {
 }
 
 impl HostArgs {
+    /// # Errors
+    /// Returns an error if the host command fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         self.command.invoke(dirs)
     }

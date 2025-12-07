@@ -12,19 +12,22 @@ use tokio::time::sleep;
 use tracing::info;
 use tracing::warn;
 
-pub fn run(dirs: PiingDirs) -> Result<()> {
-    let config_manager = ConfigManager::initialize(&dirs)?;
+/// # Errors
+/// Returns an error if runtime initialization or tray execution fails
+pub fn run(dirs: &PiingDirs) -> Result<()> {
+    let config_manager = ConfigManager::initialize(dirs)?;
 
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let ping_store = config_manager.store.clone();
     let worker_handle = spawn_ping_runtime(ping_store, shutdown_rx);
 
-    tray::run_tray(tray::TrayContext {
+    let tray_context = tray::TrayContext {
         inherited_console_available: teamy_windows::console::is_inheriting_console(),
         config_manager: config_manager.clone(),
         dirs: dirs.clone(),
         shutdown_tx: shutdown_tx.clone(),
-    })?;
+    };
+    tray::run_tray(&tray_context)?;
 
     let _ = shutdown_tx.send(true);
     worker_handle.join().ok();
@@ -73,13 +76,13 @@ async fn ping_loop(
                     break;
                 }
             }
-            _ = sleep(interval) => {}
+            () = sleep(interval) => {}
         }
     }
 }
 
 async fn run_snapshot(client: &reqwest::Client, snapshot: &ConfigSnapshot) {
-    for host in snapshot.hosts.iter() {
+    for host in &snapshot.hosts {
         let destination = parse_destination(host, snapshot.mode);
         let outcome = ping::execute_ping(client, snapshot.mode, &destination).await;
         log_outcome(&outcome);

@@ -2,6 +2,13 @@
 name = "piing"
 version = "0.3.0"
 edition = "2024"
+authors = ["TeamDman"]
+description = "Utility for monitering network stability"
+license = "MPL-2.0"
+readme = "README.md"
+repository = "https://github.com/TeamDman/piing"
+keywords = ["network","ping"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
@@ -30,3 +37,26 @@ panic = "abort"   # Smallest panic code size.
 
 [build-dependencies]
 embed-resource = "3.0.6"
+
+
+[lints.rust]
+ambiguous_negative_literals = "warn"
+missing_debug_implementations = "warn"
+redundant_imports = "warn"
+redundant_lifetimes = "warn"
+trivial_numeric_casts = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+unused_lifetimes = "warn"
+
+[lints.clippy]
+cargo = { level = "warn", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+correctness = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+multiple_crate_versions = "allow" # turn this off periodically to see how bad it has gotten :P
+# nursery = { level = "warn", priority = -1 }  # optional, might cause more false positives
+multiple_unsafe_ops_per_block = "deny"
+module_inception = "allow"

@@ -16,6 +16,8 @@ pub enum HostCommand {
 }
 
 impl HostCommand {
+    /// # Errors
+    /// Returns an error if the host subcommand fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         match self {
             HostCommand::Add(args) => args.invoke(dirs),

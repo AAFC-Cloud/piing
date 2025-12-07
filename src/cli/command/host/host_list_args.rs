@@ -7,6 +7,8 @@ use eyre::Result;
 pub struct HostListArgs {}
 
 impl HostListArgs {
+    /// # Errors
+    /// Returns an error if config operations fail
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;
@@ -16,7 +18,7 @@ impl HostListArgs {
             println!("No hosts configured.");
         } else {
             for host in hosts {
-                println!("{}", host);
+                println!("{host}");
             }
         }
 

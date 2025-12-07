@@ -20,9 +20,11 @@ pub struct Cli {
 }
 
 impl Cli {
+    /// # Errors
+    /// Returns an error if command execution fails
     pub fn invoke(self) -> eyre::Result<()> {
         let dirs = PiingDirs::ensure()?;
         let command = self.command.unwrap_or_default();
-        command.invoke(self.global_args, dirs)
+        command.invoke(self.global_args, &dirs)
     }
 }

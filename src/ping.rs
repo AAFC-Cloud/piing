@@ -18,6 +18,7 @@ pub enum PingMode {
 }
 
 impl PingMode {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             PingMode::Icmp => "icmp",
@@ -27,7 +28,7 @@ impl PingMode {
         }
     }
 
-    fn default_port(&self) -> u16 {
+    fn default_port(self) -> u16 {
         match self {
             PingMode::Tcp => 80,
             PingMode::HttpGet | PingMode::HttpHead => 443,
@@ -44,6 +45,7 @@ pub struct Destination {
     pub url: Option<String>,
 }
 
+#[must_use]
 pub fn parse_destination(input: &str, mode: PingMode) -> Destination {
     if input.starts_with("http://") || input.starts_with("https://") {
         let url = input.to_string();
@@ -52,12 +54,13 @@ pub fn parse_destination(input: &str, mode: PingMode) -> Destination {
             .trim_start_matches("https://");
         let host_part = without_scheme.split('/').next().unwrap_or(without_scheme);
         let (host_only, port) = if let Some((h, p)) = host_part.split_once(':') {
-            let port = p
-                .parse()
-                .unwrap_or_else(|_| match input.starts_with("https://") {
-                    true => 443,
-                    false => 80,
-                });
+            let port = p.parse().unwrap_or_else(|_| {
+                if input.starts_with("https://") {
+                    443
+                } else {
+                    80
+                }
+            });
             (h.to_string(), port)
         } else {
             let default_port = if input.starts_with("https://") {
@@ -84,7 +87,7 @@ pub fn parse_destination(input: &str, mode: PingMode) -> Destination {
             (input.to_string(), mode.default_port())
         };
         let url = match mode {
-            PingMode::HttpGet | PingMode::HttpHead => Some(format!("https://{}:{}", host, port)),
+            PingMode::HttpGet | PingMode::HttpHead => Some(format!("https://{host}:{port}")),
             _ => None,
         };
         Destination {
@@ -107,6 +110,7 @@ pub struct PingOutcome {
 }
 
 impl PingOutcome {
+    #[must_use]
     pub fn success(
         host: &str,
         mode: PingMode,
@@ -123,6 +127,8 @@ impl PingOutcome {
         }
     }
 
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn failure(host: &str, mode: PingMode, error: eyre::Error) -> Self {
         Self {
             host: host.to_string(),
@@ -135,6 +141,8 @@ impl PingOutcome {
     }
 }
 
+/// # Errors
+/// Returns an error if building the HTTP client fails
 pub fn build_http_client() -> Result<Client> {
     Ok(Client::builder().timeout(Duration::from_secs(10)).build()?)
 }
@@ -207,7 +215,7 @@ async fn icmp_ping(host: &str) -> Result<Duration> {
     let host = host.to_string();
     task::spawn_blocking(move || {
         use ping::ping;
-        let addr = format!("{}:0", host);
+        let addr = format!("{host}:0");
         let ip = addr
             .to_socket_addrs()
             .wrap_err("Unable to resolve host")?

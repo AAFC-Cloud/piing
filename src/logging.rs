@@ -22,19 +22,25 @@ pub enum LogWritingBehaviour {
 }
 
 impl LogWritingBehaviour {
+    #[must_use]
     pub fn log_output_path(self, dirs: &PiingDirs) -> Option<PathBuf> {
         match self {
             LogWritingBehaviour::TerminalOnly => None,
             LogWritingBehaviour::TerminalAndDefaultFile => Some({
                 let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S");
                 dirs.logs_dir()
-                    .join(format!("piing_{}.log.ndjson", timestamp))
+                    .join(format!("piing_{timestamp}.log.ndjson"))
             }),
             LogWritingBehaviour::TerminalAndSpecificFile(path) => Some(path),
         }
     }
 }
 
+/// # Errors
+/// Returns an error if log file creation or initialization fails
+///
+/// # Panics
+/// Panics if the log file mutex is poisoned
 pub fn initialize(
     level: Level,
     dirs: &PiingDirs,

@@ -9,6 +9,8 @@ pub struct HostRemoveArgs {
 }
 
 impl HostRemoveArgs {
+    /// # Errors
+    /// Returns an error if config operations fail
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;
