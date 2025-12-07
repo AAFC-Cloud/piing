@@ -4,7 +4,8 @@ use eyre::Context;
 use eyre::Result;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use std::sync::RwLock;
 use std::time::Duration;
 
 #[derive(Debug, Clone)]

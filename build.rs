@@ -5,7 +5,9 @@ fn main() {
     println!("cargo:rerun-if-changed=piing.ico");
 
     if !Path::new("piing.ico").exists() {
-        println!("cargo:warning=piing.ico not found; skipping icon embedding. Run make-icon.ps1 to generate it.");
+        println!(
+            "cargo:warning=piing.ico not found; skipping icon embedding. Run make-icon.ps1 to generate it."
+        );
         return;
     }
 

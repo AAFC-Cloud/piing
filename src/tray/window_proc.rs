@@ -1,20 +1,30 @@
 use crate::config::ConfigManager;
 use crate::home::PiingDirs;
-use eyre::{Result, eyre};
+use eyre::Result;
+use eyre::eyre;
 use humantime;
 use std::io::Write;
 use std::process::Command;
 use std::sync::OnceLock;
-use teamy_windows::console::{console_attach, console_create, console_detach};
+use teamy_windows::console::console_attach;
+use teamy_windows::console::console_create;
+use teamy_windows::console::console_detach;
 use teamy_windows::log::BufferSink;
-use teamy_windows::tray::{
-    WM_TASKBAR_CREATED, WM_USER_TRAY_CALLBACK, delete_tray_icon, re_add_tray_icon,
-};
-use tracing::{error, info};
-use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
+use teamy_windows::tray::WM_TASKBAR_CREATED;
+use teamy_windows::tray::WM_USER_TRAY_CALLBACK;
+use teamy_windows::tray::delete_tray_icon;
+use teamy_windows::tray::re_add_tray_icon;
+use tracing::error;
+use tracing::info;
+use windows::Win32::Foundation::HWND;
+use windows::Win32::Foundation::LPARAM;
+use windows::Win32::Foundation::LRESULT;
+use windows::Win32::Foundation::POINT;
+use windows::Win32::Foundation::WPARAM;
 use windows::Win32::System::Console::ATTACH_PARENT_PROCESS;
 use windows::Win32::UI::WindowsAndMessaging::*;
-use windows::core::{PCWSTR, w};
+use windows::core::PCWSTR;
+use windows::core::w;
 
 type ShutdownSender = tokio::sync::watch::Sender<bool>;
 

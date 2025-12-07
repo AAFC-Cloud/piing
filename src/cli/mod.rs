@@ -1,11 +1,10 @@
 pub mod command;
 pub mod global_args;
 
-use clap::Parser;
-
 use crate::cli::command::Command;
 use crate::cli::global_args::GlobalArgs;
 use crate::home::PiingDirs;
+use clap::Parser;
 
 #[derive(Debug, Parser)]
 #[command(

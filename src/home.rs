@@ -2,9 +2,12 @@ use eyre::Context;
 use eyre::Result;
 use std::env;
 use std::ffi::c_void;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use windows::Win32::System::Com::CoTaskMemFree;
-use windows::Win32::UI::Shell::{FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, SHGetKnownFolderPath};
+use windows::Win32::UI::Shell::FOLDERID_RoamingAppData;
+use windows::Win32::UI::Shell::KF_FLAG_DEFAULT;
+use windows::Win32::UI::Shell::SHGetKnownFolderPath;
 
 #[derive(Debug, Clone)]
 pub struct PiingDirs {

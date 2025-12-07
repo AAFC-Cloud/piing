@@ -6,10 +6,9 @@ pub mod ping;
 pub mod runtime;
 pub mod tray;
 
+use crate::cli::Cli;
 use clap::CommandFactory;
 use clap::FromArgMatches;
-
-use crate::cli::Cli;
 
 pub fn main() -> eyre::Result<()> {
     color_eyre::install()?;

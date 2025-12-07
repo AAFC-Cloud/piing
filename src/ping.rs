@@ -1,9 +1,11 @@
 use clap::ValueEnum;
-use eyre::{Context, Result};
+use eyre::Context;
+use eyre::Result;
 use reqwest::Client;
 use reqwest::StatusCode;
 use std::net::ToSocketAddrs;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 use tokio::net::TcpStream;
 use tokio::task;
 

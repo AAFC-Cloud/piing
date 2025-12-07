@@ -1,19 +1,19 @@
-use crate::cli::global_args::GlobalArgs;
-use crate::config::{ConfigManager, ConfigSnapshot, ConfigStore};
+use crate::config::ConfigManager;
+use crate::config::ConfigSnapshot;
+use crate::config::ConfigStore;
 use crate::home::PiingDirs;
-use crate::logging;
-use crate::ping::{self, parse_destination};
+use crate::ping::parse_destination;
+use crate::ping::{self};
 use crate::tray;
 use eyre::Result;
 use std::thread;
 use tokio::sync::watch;
 use tokio::time::sleep;
-use tracing::{info, warn};
+use tracing::info;
+use tracing::warn;
 
-pub fn run(globals: GlobalArgs, dirs: PiingDirs) -> Result<()> {
+pub fn run(dirs: PiingDirs) -> Result<()> {
     let config_manager = ConfigManager::initialize(&dirs)?;
-    let log_path = logging::initialize(globals.log_level(), &dirs, globals.log_file.clone())?;
-    info!(log_file = %logging::describe_log_path(&log_path), "Logging initialized");
 
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let ping_store = config_manager.store.clone();
