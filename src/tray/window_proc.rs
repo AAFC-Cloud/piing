@@ -1,3 +1,4 @@
+use crate::cli::command::audit::AuditArgs;
 use crate::config::ConfigManager;
 use crate::home::PiingDirs;
 use eyre::Result;
@@ -58,7 +59,8 @@ const CMD_SHOW_LOGS: usize = 0x2000;
 const CMD_HIDE_LOGS: usize = 0x2001;
 const CMD_OPEN_HOME: usize = 0x2002;
 const CMD_RELOAD_CONFIG: usize = 0x2003;
-const CMD_EXIT_APP: usize = 0x2004;
+const CMD_AUDIT: usize = 0x2004;
+const CMD_EXIT_APP: usize = 0x2005;
 
 #[derive(Clone)]
 pub struct TrayWindowConfig {
@@ -181,6 +183,19 @@ impl TrayWindowState {
         }
     }
 
+    fn run_audit(&mut self) {
+        // Ensure we have a console to show output
+        if self.console_mode != ConsoleMode::Owned {
+            self.show_logs();
+        }
+
+        // Run audit
+        match AuditArgs::default().invoke(&self.dirs) {
+            Ok(()) => info!("Audit completed"),
+            Err(error) => error!("Audit failed: {error}"),
+        }
+    }
+
     fn request_exit(&self) {
         let _ = self.shutdown_tx.send(true);
     }
@@ -200,6 +215,7 @@ impl TrayWindowState {
         unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null()) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_OPEN_HOME, w!("Open home folder")) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_RELOAD_CONFIG, w!("Reload config")) }.ok();
+        unsafe { AppendMenuW(menu, MF_STRING, CMD_AUDIT, w!("Audit")) }.ok();
         unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null()) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_EXIT_APP, w!("Exit")) }.ok();
 
@@ -246,6 +262,7 @@ impl TrayWindowState {
             CMD_HIDE_LOGS => self.hide_logs(),
             CMD_OPEN_HOME => self.open_home_folder(),
             CMD_RELOAD_CONFIG => self.reload_config(),
+            CMD_AUDIT => self.run_audit(),
             CMD_EXIT_APP => {
                 self.request_exit();
                 unsafe { PostMessageW(Some(hwnd), WM_CLOSE, WPARAM(0), LPARAM(0)) }.ok();
