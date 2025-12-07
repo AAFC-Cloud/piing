@@ -18,6 +18,8 @@ eyre = "0.6.12"
 humantime = "2.2.0"
 ping = "0.5.2"
 reqwest = "0.12.20"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
 teamy-windows = { version = "0.3.0", features = ["tracing-subscriber"] }
 tokio = { version = "1.45.1", features = ["full"] }
 tracing = "0.1.43"
