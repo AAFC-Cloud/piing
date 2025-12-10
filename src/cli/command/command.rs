@@ -1,4 +1,5 @@
 use crate::cli::command::audit::AuditArgs;
+use crate::cli::command::check::CheckArgs;
 use crate::cli::command::host::HostArgs;
 use crate::cli::command::interval::IntervalArgs;
 use crate::cli::command::mode::ModeArgs;
@@ -20,6 +21,8 @@ pub enum Command {
     Interval(IntervalArgs),
     /// Audit log files
     Audit(AuditArgs),
+    /// Check if Eddit-UI.exe is running
+    Check(CheckArgs),
 }
 
 impl Default for Command {
@@ -59,11 +62,15 @@ impl Command {
         logging::initialize(globals.log_level(), dirs, log_behaviour)?;
 
         match self {
-            Command::Run(args) => args.invoke(globals, dirs),
-            Command::Host(args) => args.invoke(dirs),
-            Command::Mode(args) => args.invoke(dirs),
-            Command::Interval(args) => args.invoke(dirs),
-            Command::Audit(args) => args.invoke(dirs),
+            Command::Run(args) => args.invoke(globals, dirs)?,
+            Command::Host(args) => args.invoke(dirs)?,
+            Command::Mode(args) => args.invoke(dirs)?,
+            Command::Interval(args) => args.invoke(dirs)?,
+            Command::Audit(args) => args.invoke(dirs)?,
+            Command::Check(args) => {
+                args.invoke()?;
+            }
         }
+        Ok(())
     }
 }
