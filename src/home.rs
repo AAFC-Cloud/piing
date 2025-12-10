@@ -14,8 +14,6 @@ pub struct PiingDirs {
     home: PathBuf,
     logs: PathBuf,
     config: PathBuf,
-    vpn_config: PathBuf,
-    vpn_adapter_criteria_dir: PathBuf,
 }
 
 impl PiingDirs {
@@ -28,21 +26,10 @@ impl PiingDirs {
         let home = base.canonicalize().unwrap_or(base.clone());
         let logs = home.join("logs");
         let config = home.join("config");
-        let vpn_config = config.join("vpn");
-        let vpn_adapter_criteria_dir = vpn_config.join("adapter_criteria");
         std::fs::create_dir_all(&logs).wrap_err("Failed to create logs directory")?;
         std::fs::create_dir_all(&config).wrap_err("Failed to create config directory")?;
-        std::fs::create_dir_all(&vpn_config).wrap_err("Failed to create vpn config directory")?;
-        std::fs::create_dir_all(&vpn_adapter_criteria_dir)
-            .wrap_err("Failed to create vpn adapter criteria directory")?;
 
-        Ok(Self {
-            home,
-            logs,
-            config,
-            vpn_config,
-            vpn_adapter_criteria_dir,
-        })
+        Ok(Self { home, logs, config })
     }
 
     #[must_use]
@@ -58,31 +45,6 @@ impl PiingDirs {
     #[must_use]
     pub fn config_dir(&self) -> &Path {
         &self.config
-    }
-
-    #[must_use]
-    pub fn vpn_config_dir(&self) -> &Path {
-        &self.vpn_config
-    }
-
-    #[must_use]
-    pub fn vpn_adapter_criteria_dir(&self) -> &Path {
-        &self.vpn_adapter_criteria_dir
-    }
-
-    #[must_use]
-    pub fn hosts_file(&self) -> PathBuf {
-        self.config.join("hosts.txt")
-    }
-
-    #[must_use]
-    pub fn mode_file(&self) -> PathBuf {
-        self.config.join("mode.txt")
-    }
-
-    #[must_use]
-    pub fn interval_file(&self) -> PathBuf {
-        self.config.join("interval.txt")
     }
 }
 

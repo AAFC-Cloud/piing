@@ -176,8 +176,9 @@ impl TrayWindowState {
 
     fn reload_config(&self) {
         match self.config_manager.reload() {
-            Ok(snapshot) => {
-                info!(hosts = snapshot.hosts.len(), mode = snapshot.mode.as_str(), interval = %humantime::format_duration(snapshot.interval), "Configuration reloaded");
+            Ok(mut snapshot) => {
+                let target_count = snapshot.targets().map(|targets| targets.len()).unwrap_or(0);
+                info!(targets = target_count, "Configuration reloaded");
             }
             Err(error) => error!("Failed to reload config: {error}"),
         }

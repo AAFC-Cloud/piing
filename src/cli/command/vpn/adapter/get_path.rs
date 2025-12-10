@@ -1,4 +1,4 @@
-use crate::home::PiingDirs;
+use crate::config::ConfigPaths;
 use clap::Args;
 use eyre::Result;
 
@@ -8,8 +8,8 @@ pub struct GetPathArgs {}
 impl GetPathArgs {
     /// # Errors
     /// Returns an error if the command fails
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
-        println!("{}", dirs.vpn_adapter_criteria_dir().display());
+    pub fn invoke(self, paths: &ConfigPaths) -> Result<()> {
+        println!("{}", paths.config_dir().display());
         Ok(())
     }
 }

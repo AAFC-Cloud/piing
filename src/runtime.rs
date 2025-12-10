@@ -1,7 +1,7 @@
 use crate::cli::command::vpn::check::CheckArgs;
 use crate::config::ConfigManager;
-use crate::config::ConfigSnapshot;
 use crate::config::ConfigStore;
+use crate::config::targets::Target;
 use crate::home::PiingDirs;
 use crate::ping::PingOutcome;
 use crate::ping::parse_destination;
@@ -9,6 +9,7 @@ use crate::ping::{self};
 use crate::tray;
 use eyre::Result;
 use std::thread;
+use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::sleep;
 use tracing::info;
@@ -59,22 +60,44 @@ fn spawn_ping_runtime(
     })
 }
 
+const DEFAULT_INTERVAL: Duration = Duration::from_secs(1);
+
 async fn ping_loop(
-    store: ConfigStore,
+    config_store: ConfigStore,
     client: reqwest::Client,
     shutdown_rx: &mut watch::Receiver<bool>,
 ) {
     loop {
-        let snapshot = store.snapshot();
-        if snapshot.hosts.is_empty() {
-            info!("No hosts configured; waiting interval");
-        }
-        let vpn_active = CheckArgs { quiet: true }
-            .invoke(&store.snapshot().vpn_criteria)
-            .unwrap_or(false);
+        let mut config = config_store.snapshot();
+        let targets = match config.targets() {
+            Ok(targets) => targets.to_vec(),
+            Err(error) => {
+                warn!(%error, "Failed to decode targets; retrying after default interval");
+                Vec::new()
+            }
+        };
 
-        run_snapshot(&client, &snapshot, vpn_active).await;
-        let interval = snapshot.interval;
+        if targets.is_empty() {
+            info!("No targets configured; waiting interval");
+        }
+
+        let vpn_active = match config.vpn_criteria() {
+            Ok(criteria) => CheckArgs { quiet: true }.invoke(criteria).unwrap_or(false),
+            Err(error) => {
+                warn!(%error, "Failed to decode VPN criteria; assuming inactive");
+                false
+            }
+        };
+
+        if !targets.is_empty() {
+            run_targets(&client, &targets, vpn_active).await;
+        }
+
+        let interval = targets
+            .iter()
+            .map(|target| target.interval)
+            .min()
+            .unwrap_or(DEFAULT_INTERVAL);
         tokio::select! {
             _ = shutdown_rx.changed() => {
                 if *shutdown_rx.borrow() {
@@ -87,10 +110,10 @@ async fn ping_loop(
     }
 }
 
-async fn run_snapshot(client: &reqwest::Client, snapshot: &ConfigSnapshot, vpn_active: bool) {
-    for host in &snapshot.hosts {
-        let destination = parse_destination(host, snapshot.mode);
-        let outcome = ping::execute_ping(client, snapshot.mode, &destination).await;
+async fn run_targets(client: &reqwest::Client, targets: &[Target], vpn_active: bool) {
+    for target in targets {
+        let destination = parse_destination(&target.value, target.mode);
+        let outcome = ping::execute_ping(client, target.mode, &destination).await;
         log_outcome(&outcome, vpn_active);
     }
 }

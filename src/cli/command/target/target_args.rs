@@ -1,17 +1,17 @@
-use crate::cli::command::mode::mode_command::ModeCommand;
+use crate::cli::command::target::target_command::TargetCommand;
 use crate::home::PiingDirs;
 use clap::Args;
 use eyre::Result;
 
 #[derive(Debug, Args)]
-pub struct ModeArgs {
+pub struct TargetArgs {
     #[command(subcommand)]
-    pub command: ModeCommand,
+    pub command: TargetCommand,
 }
 
-impl ModeArgs {
+impl TargetArgs {
     /// # Errors
-    /// Returns an error if the mode command fails
+    /// Returns an error if the target command fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         self.command.invoke(dirs)
     }

@@ -1,4 +1,4 @@
-use crate::config::VpnCriteria;
+use crate::config::vpn::VpnCriterion;
 use clap::Args;
 use eyre::Result;
 use teamy_windows::network::NetworkAdapterExt;
@@ -17,13 +17,13 @@ pub struct CheckArgs {
 impl CheckArgs {
     /// # Errors
     /// Returns an error if the process check fails
-    pub fn invoke(self, criteria: &VpnCriteria) -> Result<bool> {
+    pub fn invoke(self, criteria: &[VpnCriterion]) -> Result<bool> {
         let adapters = NetworkAdapters::new()?;
         debug!(count = adapters.iter().count(), "Loaded network adapters");
 
         let mut active_vpn_found = false;
         for adapter in &adapters {
-            let is_vpn = if criteria.0.iter().any(|c| c.matches(adapter)) {
+            let is_vpn = if criteria.iter().any(|c| c.matches(adapter)) {
                 if adapter.peOperStatus == IfOperStatusUp {
                     active_vpn_found = true;
                     if self.quiet {
@@ -44,11 +44,9 @@ impl CheckArgs {
         if !self.quiet {
             println!("{active_vpn_found}");
         }
-        if active_vpn_found {
-            Ok(true)
-        } else {
+        if !active_vpn_found {
             debug!("No active VPN adapters found.");
-            Ok(false)
         }
+        Ok(active_vpn_found)
     }
 }

@@ -1,7 +1,8 @@
 pub mod adapter;
 pub mod check;
 
-use crate::config::VpnCriteria;
+use crate::config::ConfigPaths;
+use crate::config::vpn::VpnCriterion;
 use crate::home::PiingDirs;
 use clap::Args;
 use clap::Subcommand;
@@ -26,16 +27,24 @@ impl VpnArgs {
     /// # Errors
     /// Returns an error if the command fails
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
+        let paths = ConfigPaths::new(dirs);
+        paths.ensure_defaults()?;
+
         match self.command {
             VpnCommand::Check(args) => {
-                let criteria = VpnCriteria::try_from_dir(dirs.vpn_adapter_criteria_dir())?;
-                debug!(count = criteria.0.len(), "Loaded VPN criteria");
+                let criteria = load_vpn_criteria(&paths)?;
+                debug!(count = criteria.len(), "Loaded VPN criteria");
 
                 let exit_code = i32::from(!args.invoke(&criteria)?);
                 std::process::exit(exit_code);
             }
-            VpnCommand::Adapter(args) => args.invoke(dirs)?,
+            VpnCommand::Adapter(args) => args.invoke(&paths)?,
         }
         Ok(())
     }
+}
+
+fn load_vpn_criteria(paths: &ConfigPaths) -> Result<Vec<VpnCriterion>> {
+    let mut snapshot = paths.load_snapshot()?;
+    Ok(snapshot.vpn_criteria()?.to_vec())
 }

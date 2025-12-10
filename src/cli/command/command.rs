@@ -1,8 +1,7 @@
 use crate::cli::command::audit::AuditArgs;
-use crate::cli::command::host::HostArgs;
-use crate::cli::command::interval::IntervalArgs;
-use crate::cli::command::mode::ModeArgs;
+use crate::cli::command::home::HomeArgs;
 use crate::cli::command::run::RunArgs;
+use crate::cli::command::target::TargetArgs;
 use crate::cli::command::vpn::VpnArgs;
 use crate::cli::global_args::GlobalArgs;
 use crate::home::PiingDirs;
@@ -13,16 +12,14 @@ use eyre::Result;
 pub enum Command {
     /// Launch the tray application and ping monitors
     Run(RunArgs),
-    /// Manage the list of hosts to ping
-    Host(HostArgs),
-    /// Configure ping mode
-    Mode(ModeArgs),
-    /// Configure ping interval
-    Interval(IntervalArgs),
+    /// Manage the list of targets to ping
+    Target(TargetArgs),
     /// Audit log files
     Audit(AuditArgs),
     /// Manage VPN related commands
     Vpn(VpnArgs),
+    /// Print the piing home directory
+    Home(HomeArgs),
 }
 
 impl Default for Command {
@@ -63,11 +60,10 @@ impl Command {
 
         match self {
             Command::Run(args) => args.invoke(globals, dirs)?,
-            Command::Host(args) => args.invoke(dirs)?,
-            Command::Mode(args) => args.invoke(dirs)?,
-            Command::Interval(args) => args.invoke(dirs)?,
+            Command::Target(args) => args.invoke(dirs)?,
             Command::Audit(args) => args.invoke(dirs)?,
             Command::Vpn(args) => args.invoke(dirs)?,
+            Command::Home(args) => args.invoke(dirs)?,
         }
         Ok(())
     }

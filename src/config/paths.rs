@@ -1,139 +1,120 @@
 use crate::config::ConfigSnapshot;
-use crate::config::VpnCriteria;
+use crate::config::targets::build_block;
 use crate::home::PiingDirs;
 use crate::ping::PingMode;
+use chrono::Utc;
 use eyre::Context;
 use eyre::Result;
+use hcl::edit::parser::parse_body;
+use hcl::edit::structure::Body;
+use std::collections::BTreeMap;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct ConfigPaths {
-    hosts: PathBuf,
-    mode: PathBuf,
-    interval: PathBuf,
-    vpn_criteria_dir: PathBuf,
+    config_dir: PathBuf,
 }
 
 impl ConfigPaths {
     #[must_use]
     pub fn new(dirs: &PiingDirs) -> Self {
         Self {
-            hosts: dirs.hosts_file(),
-            mode: dirs.mode_file(),
-            interval: dirs.interval_file(),
-            vpn_criteria_dir: dirs.vpn_adapter_criteria_dir().to_path_buf(),
+            config_dir: dirs.config_dir().to_path_buf(),
         }
     }
 
     /// # Errors
-    /// Returns an error if writing default files fails
+    /// Returns an error if the config directory cannot be created
     pub fn ensure_defaults(&self) -> Result<()> {
-        if !self.hosts.exists() {
-            fs::write(&self.hosts, "teksavvy.ca\n")
-                .wrap_err("Failed to write default hosts file")?;
-        }
-        if !self.mode.exists() {
-            fs::write(&self.mode, "icmp").wrap_err("Failed to write default mode file")?;
-        }
-        if !self.interval.exists() {
-            fs::write(&self.interval, "1s").wrap_err("Failed to write default interval file")?;
+        fs::create_dir_all(&self.config_dir)
+            .wrap_err("Failed to ensure piing config directory exists")?;
+        if !self.has_hcl_files()? {
+            let block = build_block(
+                "default_target",
+                "8.8.8.8",
+                PingMode::Icmp,
+                Duration::from_secs(1),
+            );
+            let body = Body::builder().block(block).build();
+            let default_path = self.unique_file_path("default_target");
+            self.write_body(&default_path, &body)?;
         }
         Ok(())
     }
 
     /// # Errors
-    /// Returns an error if writing the hosts file fails
-    pub fn write_hosts(&self, hosts: &[String]) -> Result<()> {
-        let mut data = String::new();
-        for host in hosts {
-            if host.trim().is_empty() {
-                continue;
-            }
-            data.push_str(host.trim());
-            data.push('\n');
-        }
-        fs::write(&self.hosts, data).wrap_err("Failed to write hosts file")
-    }
-
-    /// # Errors
-    /// Returns an error if writing the mode file fails
-    pub fn write_mode(&self, mode: PingMode) -> Result<()> {
-        fs::write(&self.mode, mode.as_str()).wrap_err("Failed to write mode file")
-    }
-
-    /// # Errors
-    /// Returns an error if writing the interval file fails
-    pub fn write_interval(&self, interval: Duration) -> Result<()> {
-        fs::write(
-            &self.interval,
-            humantime::format_duration(interval).to_string(),
-        )
-        .wrap_err("Failed to write interval file")
-    }
-
-    /// # Errors
-    /// Returns an error if reading config files fails
+    /// Returns an error if reading or parsing any config file fails
     pub fn load_snapshot(&self) -> Result<ConfigSnapshot> {
-        let hosts = if self.hosts.exists() {
-            fs::read_to_string(&self.hosts)?
-                .lines()
-                .filter(|line| !line.trim().is_empty())
-                .map(|line| line.trim().to_string())
-                .collect()
-        } else {
-            vec![]
-        };
+        let mut files = BTreeMap::new();
+        if self.config_dir.exists() {
+            for entry in fs::read_dir(&self.config_dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if !is_hcl_file(&path) {
+                    continue;
+                }
+                let content = fs::read_to_string(&path)
+                    .wrap_err_with(|| format!("Failed to read config file: {}", path.display()))?;
+                let body: Body = parse_body(&content)
+                    .wrap_err_with(|| format!("Failed to parse config file: {}", path.display()))?;
+                files.insert(path, body);
+            }
+        }
+        Ok(ConfigSnapshot::new(files))
+    }
 
-        let mode_str = if self.mode.exists() {
-            fs::read_to_string(&self.mode)?
-        } else {
-            "icmp".to_string()
-        };
-        let mode = match mode_str.trim().to_lowercase().as_str() {
-            "tcp" => PingMode::Tcp,
-            "http-get" => PingMode::HttpGet,
-            "http-head" => PingMode::HttpHead,
-            _ => PingMode::Icmp,
-        };
-
-        let interval_str = if self.interval.exists() {
-            fs::read_to_string(&self.interval)?
-        } else {
-            "1s".to_string()
-        };
-        let interval = humantime::parse_duration(interval_str.trim())
-            .unwrap_or_else(|_| Duration::from_secs(1));
-
-        let vpn_criteria =
-            VpnCriteria::try_from_dir(&self.vpn_criteria_dir).unwrap_or(VpnCriteria(vec![]));
-
-        Ok(ConfigSnapshot {
-            hosts,
-            mode,
-            interval,
-            vpn_criteria,
-        })
+    /// # Errors
+    /// Returns an error if writing the body fails
+    pub fn write_body(&self, path: &Path, body: &Body) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).wrap_err("Failed to create config parent directory")?;
+        }
+        fs::write(path, body.to_string())
+            .wrap_err_with(|| format!("Failed to write config file: {}", path.display()))
     }
 
     #[must_use]
-    pub fn hosts_path(&self) -> &PathBuf {
-        &self.hosts
+    pub fn config_dir(&self) -> &Path {
+        &self.config_dir
     }
 
     #[must_use]
-    pub fn mode_path(&self) -> &PathBuf {
-        &self.mode
+    pub fn unique_file_path(&self, stem: &str) -> PathBuf {
+        let timestamp = Utc::now().format("%Y-%m-%d_%H%M%S");
+        let mut candidate = format!("{timestamp}_{stem}.piing_hcl");
+        let mut counter = 1;
+        loop {
+            let path = self.config_dir.join(&candidate);
+            if !path.exists() {
+                return path;
+            }
+            counter += 1;
+            candidate = format!("{timestamp}_{stem}_{counter}.piing_hcl");
+        }
     }
+}
 
-    #[must_use]
-    pub fn interval_path(&self) -> &PathBuf {
-        &self.interval
-    }
+fn is_hcl_file(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|ext| ext.to_str()),
+        Some("piing_hcl")
+    )
+}
 
-    #[must_use]
-    pub fn vpn_criteria_dir(&self) -> &PathBuf {
-        &self.vpn_criteria_dir
+impl ConfigPaths {
+    fn has_hcl_files(&self) -> Result<bool> {
+        if !self.config_dir.exists() {
+            return Ok(false);
+        }
+        for entry in fs::read_dir(&self.config_dir)? {
+            let entry = entry?;
+            if is_hcl_file(&entry.path()) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }

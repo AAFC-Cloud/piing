@@ -3,7 +3,7 @@ pub mod get_path;
 pub mod list;
 pub mod remove;
 
-use crate::home::PiingDirs;
+use crate::config::ConfigPaths;
 use clap::Args;
 use clap::Subcommand;
 use eyre::Result;
@@ -29,12 +29,12 @@ pub enum AdapterCommand {
 impl AdapterArgs {
     /// # Errors
     /// Returns an error if the command fails
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
+    pub fn invoke(self, paths: &ConfigPaths) -> Result<()> {
         match self.command {
-            AdapterCommand::Add(args) => args.invoke(dirs)?,
-            AdapterCommand::Remove(args) => args.invoke(dirs)?,
-            AdapterCommand::List(args) => args.invoke(dirs)?,
-            AdapterCommand::GetPath(args) => args.invoke(dirs)?,
+            AdapterCommand::Add(args) => args.invoke(paths)?,
+            AdapterCommand::Remove(args) => args.invoke(paths)?,
+            AdapterCommand::List(args) => args.invoke(paths)?,
+            AdapterCommand::GetPath(args) => args.invoke(paths)?,
         }
         Ok(())
     }

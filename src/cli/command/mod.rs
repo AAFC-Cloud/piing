@@ -1,9 +1,8 @@
 pub mod audit;
 mod command;
-pub mod host;
-pub mod interval;
-pub mod mode;
+pub mod home;
 pub mod run;
+pub mod target;
 pub mod vpn;
 
 pub use command::Command;
