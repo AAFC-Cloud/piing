@@ -8,4 +8,6 @@ pub use manager::ConfigManager;
 pub use paths::ConfigPaths;
 pub use snapshot::ConfigSnapshot;
 pub use store::ConfigStore;
-pub use vpn_criteria::{VpnCriteria, VpnCriterion, VpnCriterionProperties};
+pub use vpn_criteria::VpnCriteria;
+pub use vpn_criteria::VpnCriterion;
+pub use vpn_criteria::VpnCriterionProperties;

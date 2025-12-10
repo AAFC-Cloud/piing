@@ -46,10 +46,10 @@ impl ListArgs {
 
         println!("\nVPN Criteria:");
         for criterion in &criteria.0 {
-            if !matched_criteria.contains(&criterion.block_label) {
-                println!("  ❓ {} ({})", criterion.block_label, criterion.properties.display_name.as_deref().unwrap_or("").dimmed());
+            if !matched_criteria.contains(&criterion.name) {
+                println!("  ❓ {} ({})", criterion.name, criterion.properties.display_name.as_deref().unwrap_or("").dimmed());
             } else {
-                println!("  ✅ {} ({})", criterion.block_label, criterion.properties.display_name.as_deref().unwrap_or("").green());
+                println!("  ✅ {} ({})", criterion.name, criterion.properties.display_name.as_deref().unwrap_or("").green());
             }
         }
 
