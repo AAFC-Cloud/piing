@@ -2,116 +2,90 @@
     <h1>📡 Piing</h1>
     <br/>
 
-[See English version](./README.md)
+[Voir la version anglaise](./README.md)
 
 </div>
 
 ## Description
 
-Un utilitaire de ping HTTP et TCP moderne écrit en Rust. Piing fournit plusieurs méthodes de mesure pour tester avec précision la connectivité réseau et la latence lorsque les paquets ICMP ne sont pas disponibles.
+Un utilitaire de ping continu qui réside dans la zone de notification (system tray) de Windows.
 
-## Fonctionnalités
+Il effectue des mesures dans le temps afin d'identifier les tendances de performance du réseau et les incidents de panne, tout en gardant une visibilité sur la connectivité VPN comme facteur possible de requêtes échouées.
 
-- **Mode de connexion TCP** : Mesure de type ping la plus précise utilisant des connexions TCP brutes
-- **Requêtes HTTP GET/HEAD** : Tests de connectivité basés sur HTTP traditionnels
-- **Sortie colorisée** : Rétroaction visuelle avec des temps de réponse codés par couleur
-- **Chronométrage flexible** : Analyse d'intervalles lisibles par l'humain (par ex., "1s", "500ms", "2.5s")
-- **Protocoles multiples** : Support pour HTTP et HTTPS avec détection automatique
+## Galerie
 
-## Installation
+L'application ajoute une icône dans la zone de notification
 
-### Prérequis
+<img src="media/system_tray.png" alt="Icône de Piing dans la zone de notification"/>
 
-- [Rust](https://rustup.rs/) (dernière version stable)
+La console est masquée par défaut, mais peut être ouverte pour voir les journaux en temps réel
 
-### Compilation à partir des sources
+<img src="media/console.png" alt="Journaux de la console Piing"/>
 
-```powershell
-git clone https://github.com/AAFC-Cloud/piing
-cd piing
-cargo build --release
-```
+Le répertoire maison stocke la configuration, les journaux et les critères VPN dans des formats simples et ouverts
 
-L'exécutable sera disponible à `target/release/piing.exe`.
-
-## Utilisation
-
-### Ping HTTP de base
-```powershell
-piing google.com
-```
-
-### Ping de connexion TCP (plus précis)
-```powershell
-piing google.com --tcp
-```
-
-### Requêtes HTTP HEAD (plus rapide que GET)
-```powershell
-piing google.com --head
-```
-
-### Intervalle personnalisé
-```powershell
-piing google.com --interval 500ms
-```
-
-### Port personnalisé pour ping TCP
-```powershell
-piing google.com --tcp --port 443
-```
-
-### Exemple complet
-```powershell
-piing https://example.com --tcp --port 443 --interval 2s
-```
-
-## Options de ligne de commande
-
-| Option | Court | Description |
-|--------|-------|-------------|
-| `--tcp` | | Utiliser la connexion TCP pour une mesure de type ping la plus précise |
-| `--head` | | Utiliser HTTP HEAD au lieu de GET (pas de corps de réponse) |
-| `--interval` | `-i` | Intervalle de rafraîchissement (par ex., "1s", "500ms", "2.5s") |
-| `--port` | `-p` | Port à utiliser pour le ping TCP (défaut : 80 pour HTTP, 443 pour HTTPS) |
-| `--help` | `-h` | Afficher les informations d'aide |
+<img src="media/home.png" alt="Répertoire maison de Piing"/>
 
 ## Sortie
 
-L'utilitaire affiche les résultats horodatés avec des temps de réponse codés par couleur :
+Par défaut, l'application écrit des fichiers journaux au format JSON délimité par des sauts de ligne (ndjson) dans `$PIING_HOME/logs/`. Chaque résultat de ping est consigné avec un horodatage, l'hôte, le mode, l'état de réussite, la latence et le contexte VPN.
 
-- **Vert** : Temps de réponse < 100ms
-- **Jaune** : Temps de réponse 100-500ms  
-- **Rouge** : Temps de réponse > 500ms
-
-### Exemple de sortie
-
-```
-TCP pinging google.com:443 every 1s
-
-Thu, 12 Jun 2025 08:48:10 -0400 - TCP Connect: SUCCESS - Duration: 29.2ms
-Thu, 12 Jun 2025 08:48:11 -0400 - TCP Connect: SUCCESS - Duration: 28.3ms
-Thu, 12 Jun 2025 08:48:12 -0400 - TCP Connect: SUCCESS - Duration: 33.5ms
+```json
+{"timestamp":"2025-12-02T04:17:28.879441Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":23.2756}}
+{"timestamp":"2025-12-02T04:17:29.909676Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":22.2433}}
+{"timestamp":"2025-12-02T04:17:30.935951Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":24.1527}}
 ```
 
-## Précision des mesures
+## Configuration
 
-### Mode de connexion TCP (recommandé)
-- **Le plus précis** pour les mesures de type ping
-- Mesure seulement le temps de réseau + poignée de main TCP
-- Exclut les frais généraux HTTP/TLS et le traitement serveur
-- Équivalent le plus proche du ping ICMP lorsque ICMP n'est pas disponible
+### Mode
 
-### Mode HTTP HEAD
-- Plus précis que les requêtes GET
-- Inclut la poignée de main TLS mais pas le téléchargement du corps de réponse
-- Bon équilibre entre précision et conformité au protocole
+Piing prend en charge plusieurs modes de ping :
+- `icmp` : Requêtes ICMP classiques (nécessitent des privilèges élevés sur certains systèmes)
+- `tcp` : Paquets TCP SYN vers le port 80/443
+- `http-head` : Requêtes HTTP HEAD vers l'hôte
+- `http-get` : Requêtes HTTP GET vers l'hôte
 
-### Mode HTTP GET
-- Cycle complet de requête/réponse HTTP
-- Inclut tous les frais généraux de réseau, TLS, HTTP et traitement serveur
-- Utile pour tester la pile d'applications complète
+### Détection de VPN
+
+Piing inclut une détection des adaptateurs VPN basée sur une configuration HCL pour identifier automatiquement quand des connexions VPN sont actives, ce qui ajoute un contexte aux données de performance de ping.
+
+## Utilisation
+
+```text
+❯ piing --help
+TeamDman's Windows tray ping utility
+
+Usage: piing.exe [OPTIONS] [COMMAND]
+
+Commands:
+    run       Launch the tray application and ping monitors
+    host      Manage the list of hosts to ping
+    mode      Configure ping mode
+    interval  Configure ping interval
+    audit     Audit log files
+    vpn       Manage VPN related commands
+    help      Print this message or the help of the given subcommand(s)
+
+Options:
+            --debug            Enable verbose debug logging
+            --log-file <FILE>  Write structured ndjson logs to this file instead of the default in `$PIING_HOME/logs`
+    -h, --help             Print help
+    -V, --version          Print version
+```
+
+Arborescence complète des commandes :
+
+```text
+piing help # Show help
+piing run # Start the tray application, default behaviour when no arguments
+piing host [add|remove|list] # Manage ping hosts
+piing mode [set|get] # Configure ping mode
+piing interval [set|get] # Configure ping interval
+piing audit # Audit ping log files
+piing vpn [check|adapter [add|remove|list|get-path]] # Manage VPN related commands
+```
 
 ## Droits d’auteur
 
-Droits d’auteur appartiennent à © Sa Majesté le Roi du chef du Canada, qui est représenté par le ministre de l’Agriculture et de l’Agroalimentaire, 2025
+Les droits d’auteur appartiennent à © Sa Majesté le Roi du chef du Canada, représenté par le ministre de l’Agriculture et de l’Agroalimentaire, 2025.
