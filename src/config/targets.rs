@@ -1,6 +1,7 @@
 use crate::ping::PingMode;
 use eyre::Context as _;
 use eyre::Result;
+use hcl::edit::Decorate;
 use hcl::edit::Decorated;
 use hcl::edit::Ident;
 use hcl::edit::expr::Expression;
@@ -46,15 +47,15 @@ pub fn build_block(name: &str, value: &str, mode: PingMode, interval: Duration) 
 fn build_body(value: &str, mode: PingMode, interval: Duration) -> Body {
     let mut body = Body::builder();
     body = body.attribute(Attribute::new(
-        Decorated::new(Ident::new("value")),
+        Decorated::new(Ident::new("value")).decorated(("  ", " ")),
         Expression::String(Decorated::new(value.to_string())),
     ));
     body = body.attribute(Attribute::new(
-        Decorated::new(Ident::new("mode")),
+        Decorated::new(Ident::new("mode")).decorated(("  ", " ")),
         Expression::String(Decorated::new(mode.as_str().to_string())),
     ));
     body = body.attribute(Attribute::new(
-        Decorated::new(Ident::new("interval")),
+        Decorated::new(Ident::new("interval")).decorated(("  ", " ")),
         Expression::String(Decorated::new(
             humantime::format_duration(interval).to_string(),
         )),
