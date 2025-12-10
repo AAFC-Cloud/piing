@@ -22,7 +22,7 @@ impl CheckArgs {
         debug!(count = adapters.iter().count(), "Loaded network adapters");
 
         let mut active_vpn_found = false;
-        for adapter in adapters.iter() {
+        for adapter in &adapters {
             let is_vpn = if criteria.0.iter().any(|c| c.matches(adapter)) {
                 if adapter.peOperStatus == IfOperStatusUp {
                     active_vpn_found = true;

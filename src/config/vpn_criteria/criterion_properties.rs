@@ -14,6 +14,7 @@ pub struct VpnCriterionProperties {
 }
 
 impl VpnCriterionProperties {
+    #[must_use]
     pub fn matches(&self, adapter: &IP_ADAPTER_ADDRESSES_LH) -> bool {
         if let Some(ref display_name) = self.display_name {
             display_name == &adapter.display_name()
@@ -45,7 +46,7 @@ impl From<VpnCriterionProperties> for Body {
         let mut body = Body::builder();
         if let Some(display_name) = props.display_name {
             body = body.attribute(hcl::edit::structure::Attribute::new(
-                Decorated::new(Ident::new("display_name")).decorated(("  "," ")),
+                Decorated::new(Ident::new("display_name")).decorated(("  ", " ")),
                 Expression::String(Decorated::new(display_name)),
             ));
         }

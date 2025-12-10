@@ -11,6 +11,11 @@ pub struct VpnCriteria(pub Vec<VpnCriterion>);
 
 impl VpnCriteria {
     /// Read the `.piing_hcl` files in the dir to parse the rules
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if reading, parsing, or converting any
+    /// `.piing_hcl` file in the directory fails.
     pub fn try_from_dir(dir_path: impl AsRef<Path>) -> Result<Self> {
         let dir = dir_path.as_ref();
         let mut criteria = Vec::new();
@@ -37,6 +42,11 @@ impl VpnCriteria {
     }
 
     /// Write the criteria to a single file
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if serializing the criteria or writing the
+    /// resulting content to `file_path` fails.
     pub fn write_to_file(&self, file_path: impl AsRef<Path>) -> Result<()> {
         let mut body = Body::builder();
         for criterion in &self.0 {

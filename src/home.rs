@@ -33,9 +33,16 @@ impl PiingDirs {
         std::fs::create_dir_all(&logs).wrap_err("Failed to create logs directory")?;
         std::fs::create_dir_all(&config).wrap_err("Failed to create config directory")?;
         std::fs::create_dir_all(&vpn_config).wrap_err("Failed to create vpn config directory")?;
-        std::fs::create_dir_all(&vpn_adapter_criteria_dir).wrap_err("Failed to create vpn adapter criteria directory")?;
+        std::fs::create_dir_all(&vpn_adapter_criteria_dir)
+            .wrap_err("Failed to create vpn adapter criteria directory")?;
 
-        Ok(Self { home, logs, config, vpn_config, vpn_adapter_criteria_dir })
+        Ok(Self {
+            home,
+            logs,
+            config,
+            vpn_config,
+            vpn_adapter_criteria_dir,
+        })
     }
 
     #[must_use]

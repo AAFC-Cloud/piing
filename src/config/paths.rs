@@ -1,4 +1,5 @@
-use crate::config::{ConfigSnapshot, VpnCriteria};
+use crate::config::ConfigSnapshot;
+use crate::config::VpnCriteria;
 use crate::home::PiingDirs;
 use crate::ping::PingMode;
 use eyre::Context;
@@ -105,8 +106,8 @@ impl ConfigPaths {
         let interval = humantime::parse_duration(interval_str.trim())
             .unwrap_or_else(|_| Duration::from_secs(1));
 
-        let vpn_criteria = VpnCriteria::try_from_dir(&self.vpn_criteria_dir)
-            .unwrap_or(VpnCriteria(vec![]));
+        let vpn_criteria =
+            VpnCriteria::try_from_dir(&self.vpn_criteria_dir).unwrap_or(VpnCriteria(vec![]));
 
         Ok(ConfigSnapshot {
             hosts,

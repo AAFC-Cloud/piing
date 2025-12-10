@@ -1,4 +1,6 @@
-use crate::config::{ConfigPaths, ConfigSnapshot, ConfigStore};
+use crate::config::ConfigPaths;
+use crate::config::ConfigSnapshot;
+use crate::config::ConfigStore;
 use crate::home::PiingDirs;
 use eyre::Result;
 

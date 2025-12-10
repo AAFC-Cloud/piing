@@ -21,7 +21,7 @@ impl AddArgs {
             .iter()
             .map(|adapter| Choice {
                 key: format!("{} ({:?})", adapter.display_name(), adapter.id()),
-                value: adapter.clone(),
+                value: *adapter,
             })
             .collect();
         let picker: PickerTui<IP_ADAPTER_ADDRESSES_LH> = PickerTui::new(choices);
@@ -29,7 +29,7 @@ impl AddArgs {
         let criteria: Vec<_> = selected.into_iter().map(Into::into).collect();
         let vpn_criteria = VpnCriteria(criteria);
         let timestamp = Utc::now().format("%Y-%m-%d_%H%M%S");
-        let filename = format!("{}.piing_hcl", timestamp);
+        let filename = format!("{timestamp}.piing_hcl");
         let file_path = dirs.vpn_adapter_criteria_dir().join(filename);
         vpn_criteria.write_to_file(file_path)?;
         Ok(())

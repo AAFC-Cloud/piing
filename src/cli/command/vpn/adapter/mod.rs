@@ -4,7 +4,8 @@ pub mod list;
 pub mod remove;
 
 use crate::home::PiingDirs;
-use clap::{Args, Subcommand};
+use clap::Args;
+use clap::Subcommand;
 use eyre::Result;
 
 #[derive(Debug, Args)]

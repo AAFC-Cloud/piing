@@ -36,6 +36,10 @@ pub struct AuditArgs {}
 impl AuditArgs {
     /// # Errors
     /// Returns an error if reading the logs directory fails
+    #[expect(
+        clippy::too_many_lines,
+        reason = "invoke orchestrates reporting and is intentionally verbose"
+    )]
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         println!("Discovering log files...\n");
 
@@ -154,10 +158,21 @@ impl AuditArgs {
         // Print day of week histogram
         println!("\n\nFailure Distribution by Day of Week:\n");
         println!("Day       | Failures | Total | Failure Rate | Bar");
-        println!("----------|----------|-------|--------------|{}", "-".repeat(50));
+        println!(
+            "----------|----------|-------|--------------|{}",
+            "-".repeat(50)
+        );
 
         let max_failures_day = failures_by_day.values().max().copied().unwrap_or(0);
-        let day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        let day_names = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ];
 
         for day in 0..7 {
             let failures = failures_by_day.get(&day).copied().unwrap_or(0);
@@ -197,7 +212,9 @@ impl AuditArgs {
             .filter(|e| e.timestamp >= twenty_four_hours_ago)
             .collect();
 
-        if !recent_events.is_empty() {
+        if recent_events.is_empty() {
+            println!("\n\nNo events found in the last 24 hours.");
+        } else {
             // Count failures by hour for last 24 hours
             let mut recent_failures_by_hour: HashMap<u32, usize> = HashMap::new();
             let mut recent_total_by_hour: HashMap<u32, usize> = HashMap::new();
@@ -243,8 +260,6 @@ impl AuditArgs {
                 recent_failures_by_hour.values().sum::<usize>()
             );
             println!("Total events (last 24h): {}", recent_events.len());
-        } else {
-            println!("\n\nNo events found in the last 24 hours.");
         }
 
         Ok(())

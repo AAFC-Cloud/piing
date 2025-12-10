@@ -31,11 +31,7 @@ impl VpnArgs {
                 let criteria = VpnCriteria::try_from_dir(dirs.vpn_adapter_criteria_dir())?;
                 debug!(count = criteria.0.len(), "Loaded VPN criteria");
 
-                let exit_code = if args.invoke(&criteria)? {
-                    0
-                } else {
-                    1
-                };
+                let exit_code = i32::from(!args.invoke(&criteria)?);
                 std::process::exit(exit_code);
             }
             VpnCommand::Adapter(args) => args.invoke(dirs)?,

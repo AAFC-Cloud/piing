@@ -24,6 +24,7 @@ impl From<IP_ADAPTER_ADDRESSES_LH> for VpnCriterion {
 }
 
 impl VpnCriterion {
+    #[must_use]
     pub fn matches(&self, adapter: &IP_ADAPTER_ADDRESSES_LH) -> bool {
         self.properties.matches(adapter)
     }
