@@ -14,14 +14,19 @@ documentation = "https://docs.rs/crate/teamy-windows"
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4.5.40", features = ["derive"] }
+cloud_terrastodon_user_input = "0.29.0"
 color-eyre = "0.6.5"
 eyre = "0.6.12"
+hcl-edit = "0.9.3"
+hcl-primitives = "0.1.11"
+hcl-rs = "0.19.4"
 humantime = "2.2.0"
+owo-colors = "4.2.3"
 ping = "0.5.2"
 reqwest = "0.12.20"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
-teamy-windows = { version = "0.4.0", features = ["tracing-subscriber"] }
+teamy-windows = { version = "0.5.0", features = ["tracing-subscriber"] }
 tokio = { version = "1.45.1", features = ["full"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }

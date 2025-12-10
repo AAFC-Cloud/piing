@@ -1,7 +1,9 @@
+use crate::cli::command::vpn::check::CheckArgs;
 use crate::config::ConfigManager;
 use crate::config::ConfigSnapshot;
 use crate::config::ConfigStore;
 use crate::home::PiingDirs;
+use crate::ping::PingOutcome;
 use crate::ping::parse_destination;
 use crate::ping::{self};
 use crate::tray;
@@ -67,7 +69,11 @@ async fn ping_loop(
         if snapshot.hosts.is_empty() {
             info!("No hosts configured; waiting interval");
         }
-        run_snapshot(&client, &snapshot).await;
+        let vpn_active = CheckArgs { quiet: true }
+            .invoke(&store.snapshot().vpn_criteria)
+            .unwrap_or(false);
+
+        run_snapshot(&client, &snapshot, vpn_active).await;
         let interval = snapshot.interval;
         tokio::select! {
             _ = shutdown_rx.changed() => {
@@ -81,15 +87,15 @@ async fn ping_loop(
     }
 }
 
-async fn run_snapshot(client: &reqwest::Client, snapshot: &ConfigSnapshot) {
+async fn run_snapshot(client: &reqwest::Client, snapshot: &ConfigSnapshot, vpn_active: bool) {
     for host in &snapshot.hosts {
         let destination = parse_destination(host, snapshot.mode);
         let outcome = ping::execute_ping(client, snapshot.mode, &destination).await;
-        log_outcome(&outcome);
+        log_outcome(&outcome, vpn_active);
     }
 }
 
-fn log_outcome(outcome: &ping::PingOutcome) {
+fn log_outcome(outcome: &PingOutcome, vpn_active: bool) {
     let latency_ms = outcome
         .latency
         .map(|dur| dur.as_secs_f64() * 1000.0)
@@ -101,6 +107,7 @@ fn log_outcome(outcome: &ping::PingOutcome) {
             success = true,
             latency_ms,
             status = outcome.status.map(|s| s.as_u16()),
+            vpn_active,
             "Ping succeeded"
         );
     } else {
@@ -109,6 +116,7 @@ fn log_outcome(outcome: &ping::PingOutcome) {
             mode = outcome.mode.as_str(),
             success = false,
             error = outcome.error.as_deref().unwrap_or("unknown"),
+            vpn_active,
             "Ping failed"
         );
     }

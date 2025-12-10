@@ -1,9 +1,9 @@
 use crate::cli::command::audit::AuditArgs;
-use crate::cli::command::check::CheckArgs;
 use crate::cli::command::host::HostArgs;
 use crate::cli::command::interval::IntervalArgs;
 use crate::cli::command::mode::ModeArgs;
 use crate::cli::command::run::RunArgs;
+use crate::cli::command::vpn::VpnArgs;
 use crate::cli::global_args::GlobalArgs;
 use crate::home::PiingDirs;
 use clap::Subcommand;
@@ -21,8 +21,8 @@ pub enum Command {
     Interval(IntervalArgs),
     /// Audit log files
     Audit(AuditArgs),
-    /// Check if Eddit-UI.exe is running
-    Check(CheckArgs),
+    /// Manage VPN related commands
+    Vpn(VpnArgs),
 }
 
 impl Default for Command {
@@ -67,9 +67,7 @@ impl Command {
             Command::Mode(args) => args.invoke(dirs)?,
             Command::Interval(args) => args.invoke(dirs)?,
             Command::Audit(args) => args.invoke(dirs)?,
-            Command::Check(args) => {
-                args.invoke()?;
-            }
+            Command::Vpn(args) => args.invoke(dirs)?,
         }
         Ok(())
     }
