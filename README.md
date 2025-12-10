@@ -32,9 +32,9 @@ The home directory stores configuration, logs, and VPN criteria in simple open f
 The app stores newline-delimited JSON (ndjson) log files in `$PIING_HOME/logs/` by default. Each ping result is logged with a timestamp, host, mode, success status, latency, and VPN context.
 
 ```json
-{"timestamp":"2025-12-02T04:17:28.879441Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":23.2756}}
-{"timestamp":"2025-12-02T04:17:29.909676Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":22.2433}}
-{"timestamp":"2025-12-02T04:17:30.935951Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":24.1527}}
+{"timestamp":"2025-12-02T04:17:28.879441Z","level":"INFO","fields":{"message":"Ping succeeded","host":"8.8.8.8","mode":"icmp","success":true,"latency_ms":23.2756}}
+{"timestamp":"2025-12-02T04:17:29.909676Z","level":"INFO","fields":{"message":"Ping succeeded","host":"8.8.8.8","mode":"icmp","success":true,"latency_ms":22.2433}}
+{"timestamp":"2025-12-02T04:17:30.935951Z","level":"INFO","fields":{"message":"Ping succeeded","host":"8.8.8.8","mode":"icmp","success":true,"latency_ms":24.1527}}
 ```
 
 ## Configuration

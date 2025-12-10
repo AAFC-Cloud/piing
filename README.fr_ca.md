@@ -31,9 +31,9 @@ Le répertoire maison stocke la configuration, les journaux et les critères VPN
 Par défaut, l'application écrit des fichiers journaux au format JSON délimité par des sauts de ligne (ndjson) dans `$PIING_HOME/logs/`. Chaque résultat de ping est consigné avec un horodatage, l'hôte, le mode, l'état de réussite, la latence et le contexte VPN.
 
 ```json
-{"timestamp":"2025-12-02T04:17:28.879441Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":23.2756}}
-{"timestamp":"2025-12-02T04:17:29.909676Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":22.2433}}
-{"timestamp":"2025-12-02T04:17:30.935951Z","level":"INFO","fields":{"message":"Ping succeeded","host":"teksavvy.ca","mode":"icmp","success":true,"latency_ms":24.1527}}
+{"timestamp":"2025-12-02T04:17:28.879441Z","level":"INFO","fields":{"message":"Ping succeeded","host":"8.8.8.8","mode":"icmp","success":true,"latency_ms":23.2756}}
+{"timestamp":"2025-12-02T04:17:29.909676Z","level":"INFO","fields":{"message":"Ping succeeded","host":"8.8.8.8","mode":"icmp","success":true,"latency_ms":22.2433}}
+{"timestamp":"2025-12-02T04:17:30.935951Z","level":"INFO","fields":{"message":"Ping succeeded","host":"8.8.8.8","mode":"icmp","success":true,"latency_ms":24.1527}}
 ```
 
 ## Configuration
