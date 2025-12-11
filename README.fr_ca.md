@@ -24,7 +24,13 @@ La console est masquée par défaut, mais peut être ouverte pour voir les journ
 
 Le répertoire maison stocke la configuration, les journaux et les critères VPN dans des formats simples et ouverts
 
-<img src="media/home.png" alt="Répertoire maison de Piing"/>
+```terraform
+resource "piing_target" "default_target" {
+  value = "8.8.8.8"
+  mode = "icmp"
+  interval = "1s"
+}
+```
 
 ## Sortie
 

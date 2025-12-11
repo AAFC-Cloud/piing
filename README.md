@@ -25,7 +25,13 @@ The console is hidden by default but can be opened to view real-time logs
 
 The home directory stores configuration, logs, and VPN criteria in simple open formats
 
-<img src="media/home.png" alt="Piing Home Directory"/>
+```terraform
+resource "piing_target" "default_target" {
+  value = "8.8.8.8"
+  mode = "icmp"
+  interval = "1s"
+}
+```
 
 ## Output
 
