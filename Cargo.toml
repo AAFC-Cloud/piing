@@ -25,11 +25,22 @@ ping = "0.5.2"
 reqwest = "0.12.20"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
-teamy-windows = { version = "0.5.0", features = ["tracing-subscriber"] }
+teamy-windows = { version = "0.7.0", features = ["tracing-subscriber"] }
 tokio = { version = "1.45.1", features = ["full"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
-windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_Networking_WinSock", "Win32_System_Com", "Win32_UI_Shell","Win32_NetworkManagement_Ndis"] }
+windows = { version = "0.62.2", features = [
+	"Win32_Foundation",
+	"Win32_NetworkManagement_IpHelper",
+	"Win32_Networking_WinSock",
+	"Win32_System_Com",
+	"Win32_UI_Controls",
+	"Win32_UI_Shell",
+	"Win32_UI_WindowsAndMessaging",
+	"Win32_NetworkManagement_Ndis",
+	"Win32_System_Memory",
+	"Win32_System_DataExchange",
+] }
 
 # Enable max optimizations for dependencies, but not for our code:
 [profile.dev.package."*"]

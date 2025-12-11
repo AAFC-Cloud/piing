@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use teamy_windows::log::LOG_BUFFER;
 use tracing::Level;
+use tracing::debug;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::writer::BoxMakeWriter;
@@ -100,6 +101,8 @@ pub fn initialize(
             .try_init()
             .map_err(|e| eyre::eyre!(e))?;
     }
+
+    debug!("Logging initialized");
 
     Ok(log_path)
 }

@@ -12,8 +12,8 @@ impl TargetListArgs {
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;
-        let mut snapshot = paths.load_snapshot()?;
-        let targets = snapshot.targets()?.to_vec();
+        let snapshot = paths.load_snapshot()?;
+        let targets = snapshot.targets().to_vec();
 
         if targets.is_empty() {
             println!("No targets configured.");

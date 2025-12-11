@@ -1,13 +1,13 @@
-pub mod manager;
-pub mod paths;
-pub mod snapshot;
-pub mod store;
+pub mod config_manager;
+pub mod config_paths;
+pub mod config_snapshot;
+pub mod config_store;
 pub mod targets;
-pub mod vpn;
+pub mod vpn_criterion;
 
-pub use manager::ConfigManager;
-pub use paths::ConfigPaths;
-pub use snapshot::ConfigSnapshot;
-pub use store::ConfigStore;
+pub use config_manager::ConfigManager;
+pub use config_paths::ConfigPaths;
+pub use config_snapshot::ConfigSnapshot;
+pub use config_store::ConfigStore;
 pub use targets::Target;
-pub use vpn::VpnCriterion;
+pub use vpn_criterion::VpnCriterion;

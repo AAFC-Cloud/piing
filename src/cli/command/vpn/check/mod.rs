@@ -1,4 +1,4 @@
-use crate::config::vpn::VpnCriterion;
+use crate::config::vpn_criterion::VpnCriterion;
 use clap::Args;
 use eyre::Result;
 use teamy_windows::network::NetworkAdapterExt;

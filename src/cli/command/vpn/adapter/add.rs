@@ -1,6 +1,6 @@
 use crate::config::ConfigPaths;
 use crate::config::targets::sanitize_label;
-use crate::config::vpn::VpnCriterion;
+use crate::config::vpn_criterion::VpnCriterion;
 use clap::Args;
 use cloud_terrastodon_user_input::Choice;
 use cloud_terrastodon_user_input::PickerTui;

@@ -1,5 +1,6 @@
 use crate::cli::command::vpn::check::CheckArgs;
 use crate::config::ConfigManager;
+use crate::config::ConfigSnapshot;
 use crate::config::ConfigStore;
 use crate::config::targets::Target;
 use crate::home::PiingDirs;
@@ -7,6 +8,7 @@ use crate::ping::PingOutcome;
 use crate::ping::parse_destination;
 use crate::ping::{self};
 use crate::tray;
+use crate::ui::dialogs::retry_config_operation;
 use eyre::Result;
 use std::thread;
 use std::time::Duration;
@@ -18,7 +20,7 @@ use tracing::warn;
 /// # Errors
 /// Returns an error if runtime initialization or tray execution fails
 pub fn run(dirs: &PiingDirs) -> Result<()> {
-    let config_manager = ConfigManager::initialize(dirs)?;
+    let config_manager = retry_config_operation(dirs, None, || ConfigManager::initialize(dirs))?;
 
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let ping_store = config_manager.store.clone();
@@ -68,26 +70,19 @@ async fn ping_loop(
     shutdown_rx: &mut watch::Receiver<bool>,
 ) {
     loop {
-        let mut config = config_store.snapshot();
-        let targets = match config.targets() {
-            Ok(targets) => targets.to_vec(),
-            Err(error) => {
-                warn!(%error, "Failed to decode targets; retrying after default interval");
-                Vec::new()
-            }
-        };
+        let ConfigSnapshot {
+            targets,
+            vpn_criteria,
+            ..
+        } = config_store.snapshot();
 
         if targets.is_empty() {
             info!("No targets configured; waiting interval");
         }
 
-        let vpn_active = match config.vpn_criteria() {
-            Ok(criteria) => CheckArgs { quiet: true }.invoke(criteria).unwrap_or(false),
-            Err(error) => {
-                warn!(%error, "Failed to decode VPN criteria; assuming inactive");
-                false
-            }
-        };
+        let vpn_active = CheckArgs { quiet: true }
+            .invoke(&vpn_criteria)
+            .unwrap_or(false);
 
         if !targets.is_empty() {
             run_targets(&client, &targets, vpn_active).await;

@@ -2,7 +2,7 @@ pub mod adapter;
 pub mod check;
 
 use crate::config::ConfigPaths;
-use crate::config::vpn::VpnCriterion;
+use crate::config::vpn_criterion::VpnCriterion;
 use crate::home::PiingDirs;
 use clap::Args;
 use clap::Subcommand;
@@ -45,6 +45,6 @@ impl VpnArgs {
 }
 
 fn load_vpn_criteria(paths: &ConfigPaths) -> Result<Vec<VpnCriterion>> {
-    let mut snapshot = paths.load_snapshot()?;
-    Ok(snapshot.vpn_criteria()?.to_vec())
+    let snapshot = paths.load_snapshot()?;
+    Ok(snapshot.vpn_criteria().to_vec())
 }

@@ -1,7 +1,7 @@
 use std::path::Path;
 
 fn main() {
-    println!("cargo:rerun-if-changed=icons.rc");
+    println!("cargo:rerun-if-changed=app.rc");
     println!("cargo:rerun-if-changed=piing.ico");
 
     if !Path::new("piing.ico").exists() {
@@ -11,7 +11,7 @@ fn main() {
         return;
     }
 
-    embed_resource::compile("icons.rc", embed_resource::NONE)
+    embed_resource::compile("app.rc", embed_resource::NONE)
         .manifest_required()
         .expect("failed to embed resources");
 }

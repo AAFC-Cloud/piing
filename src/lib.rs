@@ -5,6 +5,7 @@ pub mod logging;
 pub mod ping;
 pub mod runtime;
 pub mod tray;
+pub mod ui;
 
 use crate::cli::Cli;
 use clap::CommandFactory;

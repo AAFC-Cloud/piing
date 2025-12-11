@@ -34,7 +34,7 @@ impl TargetAddArgs {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;
 
-        let mut snapshot = paths.load_snapshot()?;
+        let snapshot = paths.load_snapshot()?;
         let requested_name = self
             .name
             .as_deref()
@@ -46,7 +46,7 @@ impl TargetAddArgs {
         }
 
         if snapshot
-            .targets()?
+            .targets()
             .iter()
             .any(|target| target.id.name.eq_ignore_ascii_case(&sanitized))
         {

@@ -1,6 +1,7 @@
 use crate::cli::command::audit::AuditArgs;
 use crate::config::ConfigManager;
 use crate::home::PiingDirs;
+use crate::ui::dialogs::retry_config_operation;
 use eyre::Result;
 use eyre::eyre;
 use std::io::Write;
@@ -174,13 +175,13 @@ impl TrayWindowState {
         }
     }
 
-    fn reload_config(&self) {
-        match self.config_manager.reload() {
-            Ok(mut snapshot) => {
-                let target_count = snapshot.targets().map(|targets| targets.len()).unwrap_or(0);
+    fn reload_config(&self, owner: HWND) {
+        match retry_config_operation(&self.dirs, Some(owner), || self.config_manager.reload()) {
+            Ok(snapshot) => {
+                let target_count = snapshot.targets().len();
                 info!(targets = target_count, "Configuration reloaded");
             }
-            Err(error) => error!("Failed to reload config: {error}"),
+            Err(error) => error!("Configuration reload aborted: {error}"),
         }
     }
 
@@ -262,7 +263,7 @@ impl TrayWindowState {
             CMD_SHOW_LOGS => self.show_logs(),
             CMD_HIDE_LOGS => self.hide_logs(),
             CMD_OPEN_HOME => self.open_home_folder(),
-            CMD_RELOAD_CONFIG => self.reload_config(),
+            CMD_RELOAD_CONFIG => self.reload_config(hwnd),
             CMD_AUDIT => self.run_audit(),
             CMD_EXIT_APP => {
                 self.request_exit();

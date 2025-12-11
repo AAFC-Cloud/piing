@@ -1,0 +1,3 @@
+#define RT_MANIFEST 24
+1 RT_MANIFEST "piing.exe.manifest"
+piing_icon ICON "piing.ico"

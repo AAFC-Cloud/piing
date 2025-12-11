@@ -20,8 +20,8 @@ impl ListArgs {
     /// Returns an error if the command fails
     pub fn invoke(self, paths: &ConfigPaths) -> Result<()> {
         let adapters = NetworkAdapters::new()?;
-        let mut snapshot = paths.load_snapshot()?;
-        let criteria = snapshot.vpn_criteria()?.to_vec();
+        let snapshot = paths.load_snapshot()?;
+        let criteria = snapshot.vpn_criteria().to_vec();
         let mut matched_criteria: HashSet<String> = HashSet::new();
 
         // Collect matched criteria from all adapters
