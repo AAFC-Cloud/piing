@@ -44,6 +44,8 @@ impl From<IP_ADAPTER_ADDRESSES_LH> for VpnCriterion {
     }
 }
 
+/// # Errors
+/// Returns an error if a block cannot be decoded into a `VpnCriterion`
 pub fn decode_vpn_criteria(file_path: &Path, body: &Body) -> Result<Vec<VpnCriterion>> {
     let mut criteria = Vec::new();
     for structure in body.clone() {

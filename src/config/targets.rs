@@ -63,6 +63,8 @@ fn build_body(value: &str, mode: PingMode, interval: Duration) -> Body {
     body.build()
 }
 
+/// # Errors
+/// Returns an error if required attributes are missing or invalid types/values are encountered
 pub fn decode_targets(file_path: &Path, body: &Body) -> Result<Vec<Target>> {
     let mut targets = Vec::new();
     for structure in body.clone() {
@@ -118,7 +120,7 @@ fn read_string_attribute(block: &Block, key: &str, file_path: &Path, name: &str)
     attribute
         .value
         .as_str()
-        .map(|decorated| decorated.to_string())
+        .map(std::string::ToString::to_string)
         .ok_or_else(|| {
             eyre::eyre!(
                 "Attribute '{}' must be a string in {} -> {}",
@@ -129,6 +131,7 @@ fn read_string_attribute(block: &Block, key: &str, file_path: &Path, name: &str)
         })
 }
 
+#[must_use]
 pub fn sanitize_label(input: &str) -> String {
     let mut sanitized = String::new();
     for ch in input.chars() {

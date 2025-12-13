@@ -35,6 +35,8 @@ pub enum ConfigDialogChoice {
     ShowLogs,
 }
 
+/// # Errors
+/// Returns an error if the provided operation ultimately fails after user choice
 pub fn retry_config_operation<F, T>(
     dirs: &PiingDirs,
     owner: Option<HWND>,
@@ -75,6 +77,11 @@ where
     }
 }
 
+/// # Errors
+/// Returns an error if dialog creation or display fails
+///
+/// # Panics
+/// Panics if the dialog structure sizes cannot fit into a `u32` (should never happen on supported platforms)
 pub fn show_config_error_dialog(
     message: &str,
     owner: Option<HWND>,
@@ -92,42 +99,48 @@ pub fn show_config_error_dialog(
     let buttons = [
         TASKDIALOG_BUTTON {
             nButtonID: BTN_OK,
-            pszButtonText: unsafe { (&ok_label).as_ptr() },
+            pszButtonText: unsafe { ok_label.as_ptr() },
         },
         TASKDIALOG_BUTTON {
             nButtonID: BTN_OPEN_HOME,
-            pszButtonText: unsafe { (&open_label).as_ptr() },
+            pszButtonText: unsafe { open_label.as_ptr() },
         },
         TASKDIALOG_BUTTON {
             nButtonID: BTN_COPY_MESSAGE,
-            pszButtonText: unsafe { (&copy_label).as_ptr() },
+            pszButtonText: unsafe { copy_label.as_ptr() },
         },
         TASKDIALOG_BUTTON {
             nButtonID: BTN_SHOW_LOGS,
-            pszButtonText: unsafe { (&show_logs_label).as_ptr() },
+            pszButtonText: unsafe { show_logs_label.as_ptr() },
         },
         TASKDIALOG_BUTTON {
             nButtonID: BTN_RELOAD,
-            pszButtonText: unsafe { (&reload_label).as_ptr() },
+            pszButtonText: unsafe { reload_label.as_ptr() },
         },
     ];
 
-    let mut config = TASKDIALOGCONFIG::default();
-    config.cbSize = std::mem::size_of::<TASKDIALOGCONFIG>() as u32;
-    config.hwndParent = owner_hwnd;
-    config.dwFlags = TASKDIALOG_FLAGS(
-        TDF_ALLOW_DIALOG_CANCELLATION.0 | TDF_SIZE_TO_CONTENT.0 | TDF_POSITION_RELATIVE_TO_WINDOW.0,
-    );
-    config.dwCommonButtons = TASKDIALOG_COMMON_BUTTON_FLAGS(0);
-    config.pszWindowTitle = unsafe { (&window_title).as_ptr() };
-    config.pszMainInstruction = unsafe { (&instruction).as_ptr() };
-    config.pszContent = unsafe { (&content).as_ptr() };
-    config.cButtons = buttons.len() as u32;
-    config.pButtons = buttons.as_ptr();
+    let config = TASKDIALOGCONFIG {
+        cbSize: u32::try_from(std::mem::size_of::<TASKDIALOGCONFIG>())
+            .expect("TASKDIALOGCONFIG size fits in u32"),
+        hwndParent: owner_hwnd,
+        dwFlags: TASKDIALOG_FLAGS(
+            TDF_ALLOW_DIALOG_CANCELLATION.0
+                | TDF_SIZE_TO_CONTENT.0
+                | TDF_POSITION_RELATIVE_TO_WINDOW.0,
+        ),
+        dwCommonButtons: TASKDIALOG_COMMON_BUTTON_FLAGS(0),
+        pszWindowTitle: unsafe { window_title.as_ptr() },
+        pszMainInstruction: unsafe { instruction.as_ptr() },
+        pszContent: unsafe { content.as_ptr() },
+        cButtons: u32::try_from(buttons.len()).expect("button count fits in u32"),
+        pButtons: buttons.as_ptr(),
+        ..Default::default()
+    };
 
     let mut pressed_button = BTN_OK;
     unsafe {
-        if TaskDialogIndirect(&config, Some(&mut pressed_button), None, None).is_ok() {
+        if TaskDialogIndirect(&raw const config, Some(&raw mut pressed_button), None, None).is_ok()
+        {
             return Ok(match pressed_button {
                 BTN_OPEN_HOME => ConfigDialogChoice::OpenHomeDir,
                 BTN_COPY_MESSAGE => ConfigDialogChoice::CopyMessage,
@@ -162,6 +175,8 @@ fn show_logs_console() {
     stdout.flush().ok();
 }
 
+/// # Errors
+/// Returns an error if launching Explorer fails
 pub fn open_home_directory(dirs: &PiingDirs) -> Result<()> {
     Command::new("explorer")
         .arg(dirs.home_dir())

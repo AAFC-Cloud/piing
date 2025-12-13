@@ -38,8 +38,7 @@ impl TargetAddArgs {
         let requested_name = self
             .name
             .as_deref()
-            .map(str::to_string)
-            .unwrap_or_else(|| sanitize_label(self.value.trim()));
+            .map_or_else(|| sanitize_label(self.value.trim()), str::to_string);
         let sanitized = sanitize_label(&requested_name);
         if sanitized.is_empty() {
             eyre::bail!("Unable to derive a valid target name");
