@@ -116,7 +116,7 @@ async fn run_targets(client: &reqwest::Client, targets: &[Target], vpn_active: b
 fn log_outcome(outcome: &PingOutcome, vpn_active: bool) {
     let latency_ms = outcome
         .latency
-        .map(|dur| (dur.as_secs_f64() * 1000.0).round())
+        .map(|dur| (dur.as_secs_f64() * 1000.0).round() as usize)
         .unwrap_or_default();
     if outcome.success {
         info!(
