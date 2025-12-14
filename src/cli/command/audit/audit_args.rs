@@ -110,8 +110,8 @@ impl AuditArgs {
 
         // Print histogram
         println!("Failure Distribution by Hour of Day:\n");
-        println!("Hour | Failures | Total | Failure Rate | Bar");
-        println!("-----|----------|-------|--------------|{}", "-".repeat(50));
+        println!("Hour | Failures |     Total | Failure Rate | Bar");
+        println!("-----|----------|----------|--------------|{}", "-".repeat(50));
 
         let max_failures = failures_by_hour.values().max().copied().unwrap_or(0);
         let bar_width = 50;
@@ -134,7 +134,7 @@ impl AuditArgs {
 
             let bar = "█".repeat(bar_length);
 
-            println!("{hour:4} | {failures:8} | {total:5} | {rate:11.2}% | {bar}");
+            println!("{hour:4} | {failures:8} | {total:10} | {rate:11.2}% | {bar}");
         }
 
         println!(
@@ -157,9 +157,9 @@ impl AuditArgs {
 
         // Print day of week histogram
         println!("\n\nFailure Distribution by Day of Week:\n");
-        println!("Day       | Failures | Total | Failure Rate | Bar");
+        println!("Day       | Failures |     Total | Failure Rate | Bar");
         println!(
-            "----------|----------|-------|--------------|{}",
+            "----------|----------|----------|--------------|{}",
             "-".repeat(50)
         );
 
@@ -193,7 +193,7 @@ impl AuditArgs {
             let bar = "█".repeat(bar_length);
 
             println!(
-                "{:9} | {:8} | {:5} | {:11.2}% | {}",
+                "{:9} | {:8} | {:10} | {:11.2}% | {}",
                 day_names[day as usize], failures, total, rate, bar
             );
         }
@@ -229,8 +229,8 @@ impl AuditArgs {
 
             // Print last 24 hours histogram
             println!("\n\nFailure Distribution by Hour of Day (Last 24 Hours):\n");
-            println!("Hour | Failures | Total | Failure Rate | Bar");
-            println!("-----|----------|-------|--------------|{}", "-".repeat(50));
+            println!("Hour | Failures |     Total | Failure Rate | Bar");
+            println!("-----|----------|----------|--------------|{}", "-".repeat(50));
 
             let max_recent_failures = recent_failures_by_hour.values().max().copied().unwrap_or(0);
 
@@ -252,7 +252,7 @@ impl AuditArgs {
 
                 let bar = "█".repeat(bar_length);
 
-                println!("{hour:4} | {failures:8} | {total:5} | {rate:11.2}% | {bar}");
+                println!("{hour:4} | {failures:8} | {total:10} | {rate:11.2}% | {bar}");
             }
 
             println!(
