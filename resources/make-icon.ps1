@@ -1,6 +1,6 @@
 param(
-    [string]$Source = "generated-image.png",
-    [string]$Output = "piing.ico"
+    [string]$Source,
+    [string]$Output
 )
 
 if (-not (Test-Path $Source)) {

@@ -3,6 +3,7 @@ use crate::config::targets::build_block;
 use crate::config::targets::sanitize_label;
 use crate::home::PiingDirs;
 use crate::ping::PingMode;
+use crate::ping::parse_destination;
 use clap::Args;
 use eyre::Result;
 use hcl::edit::structure::Body;
@@ -52,7 +53,8 @@ impl TargetAddArgs {
             eyre::bail!("Target with name '{}' already exists", sanitized);
         }
 
-        let block = build_block(&sanitized, self.value.trim(), self.mode, self.interval);
+        let destination = parse_destination(self.value.trim(), self.mode);
+        let block = build_block(&sanitized, &destination, self.mode, self.interval);
         let body = Body::builder().block(block).build();
         let file_path = paths.unique_file_path(&sanitized);
         paths.write_body(&file_path, &body)?;

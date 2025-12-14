@@ -22,7 +22,7 @@ impl TargetListArgs {
                 println!(
                     "{:<20} {:<20} mode={} interval={}",
                     target.id.name,
-                    target.value,
+                    target.value.display,
                     target.mode.as_str(),
                     humantime::format_duration(target.interval)
                 );

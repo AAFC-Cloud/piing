@@ -1,4 +1,6 @@
+use crate::ping::Destination;
 use crate::ping::PingMode;
+use crate::ping::parse_destination;
 use eyre::Context as _;
 use eyre::Result;
 use hcl::edit::Decorate;
@@ -11,6 +13,7 @@ use hcl::edit::structure::Body;
 use hcl::edit::structure::Structure;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -22,7 +25,7 @@ pub struct TargetId {
 #[derive(Debug, Clone)]
 pub struct Target {
     pub id: TargetId,
-    pub value: String,
+    pub value: Arc<Destination>,
     pub mode: PingMode,
     pub interval: Duration,
 }
@@ -35,12 +38,12 @@ impl Target {
 }
 
 #[must_use]
-pub fn build_block(name: &str, value: &str, mode: PingMode, interval: Duration) -> Block {
+pub fn build_block(name: &str, value: &Destination, mode: PingMode, interval: Duration) -> Block {
     let mut block = Block::builder(Ident::new("resource"))
         .label("piing_target")
         .label(name)
         .build();
-    block.body = build_body(value, mode, interval);
+    block.body = build_body(value.display.as_str(), mode, interval);
     block
 }
 
@@ -95,12 +98,13 @@ pub fn decode_targets(file_path: &Path, body: &Body) -> Result<Vec<Target>> {
                 file_path.display()
             )
         })?;
+        let destination = parse_destination(&value, mode);
         targets.push(Target {
             id: TargetId {
                 file_path: file_path.to_path_buf(),
                 name,
             },
-            value,
+            value: Arc::new(destination),
             mode,
             interval,
         });

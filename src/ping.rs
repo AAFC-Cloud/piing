@@ -37,7 +37,7 @@ impl PingMode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Destination {
     pub display: String,
     pub host: String,

@@ -1,0 +1,4 @@
+#define RT_MANIFEST 24
+1 RT_MANIFEST "piing.exe.manifest"
+green_check_icon ICON "green_check.ico"
+red_x_icon ICON "red_x.ico"

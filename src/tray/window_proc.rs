@@ -1,6 +1,8 @@
 use crate::cli::command::audit::AuditArgs;
 use crate::config::ConfigManager;
 use crate::home::PiingDirs;
+use crate::tray::current_tray_icon;
+use crate::tray::set_tray_icon;
 use crate::ui::dialogs::retry_config_operation;
 use eyre::Result;
 use eyre::eyre;
@@ -324,6 +326,10 @@ pub unsafe extern "system" fn window_proc(
         m if m == *WM_TASKBAR_CREATED => {
             if let Err(error) = re_add_tray_icon() {
                 error!("Failed to re-add tray icon: {error}");
+            } else if let Some(icon) = current_tray_icon()
+                && let Err(error) = set_tray_icon(icon)
+            {
+                error!("Failed to restore tray icon after taskbar recreation: {error}");
             }
             LRESULT(0)
         }

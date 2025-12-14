@@ -5,17 +5,21 @@ use crate::config::ConfigStore;
 use crate::config::targets::Target;
 use crate::home::PiingDirs;
 use crate::ping::PingOutcome;
-use crate::ping::parse_destination;
 use crate::ping::{self};
 use crate::tray;
 use crate::ui::dialogs::retry_config_operation;
 use eyre::Result;
 use std::thread;
 use std::time::Duration;
+use teamy_windows::hicon::get_icon_from_current_module;
 use tokio::sync::watch;
+use tokio::task::JoinSet;
 use tokio::time::sleep;
+use tracing::error;
 use tracing::info;
 use tracing::warn;
+use windows::Win32::UI::WindowsAndMessaging::HICON;
+use windows::core::w;
 
 /// # Errors
 /// Returns an error if runtime initialization or tray execution fails
@@ -57,7 +61,9 @@ fn spawn_ping_runtime(
                     return;
                 }
             };
-            ping_loop(store, client, &mut shutdown_rx).await;
+            if let Err(e) = ping_loop(store, client, &mut shutdown_rx).await {
+                error!("Ping runtime encountered an error: {e}");
+            }
         });
     })
 }
@@ -68,7 +74,10 @@ async fn ping_loop(
     config_store: ConfigStore,
     client: reqwest::Client,
     shutdown_rx: &mut watch::Receiver<bool>,
-) {
+) -> eyre::Result<()> {
+    let success_icon = get_icon_from_current_module(w!("green_check_icon"))?;
+    let failure_icon = get_icon_from_current_module(w!("red_x_icon"))?;
+
     loop {
         let ConfigSnapshot {
             targets,
@@ -85,7 +94,8 @@ async fn ping_loop(
             .unwrap_or(false);
 
         if !targets.is_empty() {
-            run_targets(&client, &targets, vpn_active).await;
+            let outcomes = run_targets(&client, &targets, vpn_active).await;
+            apply_tray_icon(&outcomes, success_icon, failure_icon);
         }
 
         let interval = targets
@@ -103,20 +113,42 @@ async fn ping_loop(
             () = sleep(interval) => {}
         }
     }
+    Ok(())
 }
 
-async fn run_targets(client: &reqwest::Client, targets: &[Target], vpn_active: bool) {
+async fn run_targets(
+    client: &reqwest::Client,
+    targets: &[Target],
+    vpn_active: bool,
+) -> Vec<PingOutcome> {
+    let mut join_set = JoinSet::new();
+
     for target in targets {
-        let destination = parse_destination(&target.value, target.mode);
-        let outcome = ping::execute_ping(client, target.mode, &destination).await;
-        log_outcome(&outcome, vpn_active);
+        let mode = target.mode;
+        let destination = target.value.clone();
+        let client = client.clone();
+        join_set.spawn(async move {
+            let outcome = ping::execute_ping(&client, mode, &destination).await;
+            log_outcome(&outcome, vpn_active);
+            outcome
+        });
     }
+
+    let mut outcomes = Vec::with_capacity(targets.len());
+    while let Some(result) = join_set.join_next().await {
+        match result {
+            Ok(outcome) => outcomes.push(outcome),
+            Err(error) => error!("Ping task failed: {error}"),
+        }
+    }
+
+    outcomes
 }
 
 fn log_outcome(outcome: &PingOutcome, vpn_active: bool) {
     let latency_ms = outcome
         .latency
-        .map(|dur| (dur.as_secs_f64() * 1000.0).round() as usize)
+        .map(|dur| dur.as_millis())
         .unwrap_or_default();
     if outcome.success {
         info!(
@@ -137,5 +169,21 @@ fn log_outcome(outcome: &PingOutcome, vpn_active: bool) {
             vpn_active,
             "Ping failed"
         );
+    }
+}
+
+fn apply_tray_icon(outcomes: &[PingOutcome], success_icon: HICON, failure_icon: HICON) {
+    if outcomes.is_empty() {
+        return;
+    }
+
+    let is_success = outcomes.iter().all(|outcome| outcome.success);
+    let icon = if is_success {
+        success_icon
+    } else {
+        failure_icon
+    };
+    if let Err(e) = tray::set_tray_icon(icon) {
+        warn!("Failed to set tray icon: {e:?}");
     }
 }
