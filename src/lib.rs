@@ -7,6 +7,7 @@ pub mod runtime;
 pub mod sound;
 pub mod tray;
 pub mod ui;
+pub mod vpn_detector;
 
 use crate::cli::Cli;
 use clap::CommandFactory;

@@ -1,6 +1,4 @@
-use crate::cli::command::vpn::check::CheckArgs;
 use crate::config::ConfigManager;
-use crate::config::ConfigSnapshot;
 use crate::config::ConfigStore;
 use crate::config::targets::Target;
 use crate::home::PiingDirs;
@@ -9,6 +7,7 @@ use crate::ping::{self};
 use crate::sound;
 use crate::tray;
 use crate::ui::dialogs::retry_config_operation;
+use crate::vpn_detector::VpnDetector;
 use eyre::Result;
 use std::thread;
 use std::time::Duration;
@@ -83,22 +82,25 @@ async fn ping_loop(
     let success_icon = get_icon_from_current_module(w!("green_check_icon"))?;
     let failure_icon = get_icon_from_current_module(w!("red_x_icon"))?;
     let mut last_success_state: Option<bool> = None;
+    // Construct a detector once and reuse it across ticks to avoid
+    // re-enumerating adapters every iteration.
+    let mut vpn_detector = VpnDetector::new();
 
     loop {
-        let ConfigSnapshot {
-            targets,
-            vpn_criteria,
-            problem_sound,
-            ..
-        } = config_store.snapshot();
+        let snapshot = config_store.snapshot();
+        let targets = snapshot.targets;
+        let vpn_criteria = snapshot.vpn_criteria;
+        let problem_sound = snapshot.problem_sound;
+        let snapshot_time = snapshot.snapshot_time;
 
         if targets.is_empty() {
             info!("No targets configured; waiting interval");
         }
 
-        let vpn_active = CheckArgs { quiet: true }
-            .invoke(&vpn_criteria)
-            .unwrap_or(false);
+        // Check VPN state using in-memory snapshot `vpn_criteria` to avoid
+        // re-loading config on every tick. Use the shared `vpn_detector`
+        // instance to keep adapter enumeration minimal.
+        let vpn_active = vpn_detector.is_vpn_active(&vpn_criteria, snapshot_time);
 
         if targets.is_empty() {
             last_success_state = None;

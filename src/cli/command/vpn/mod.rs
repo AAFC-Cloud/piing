@@ -2,12 +2,10 @@ pub mod adapter;
 pub mod check;
 
 use crate::config::ConfigPaths;
-use crate::config::vpn_criterion::VpnCriterion;
 use crate::home::PiingDirs;
 use clap::Args;
 use clap::Subcommand;
 use eyre::Result;
-use tracing::debug;
 
 #[derive(Debug, Args)]
 pub struct VpnArgs {
@@ -31,20 +29,9 @@ impl VpnArgs {
         paths.ensure_defaults()?;
 
         match self.command {
-            VpnCommand::Check(args) => {
-                let criteria = load_vpn_criteria(&paths)?;
-                debug!(count = criteria.len(), "Loaded VPN criteria");
-
-                let exit_code = i32::from(!args.invoke(&criteria)?);
-                std::process::exit(exit_code);
-            }
+            VpnCommand::Check(args) => args.invoke(&paths)?,
             VpnCommand::Adapter(args) => args.invoke(&paths)?,
         }
         Ok(())
     }
-}
-
-fn load_vpn_criteria(paths: &ConfigPaths) -> Result<Vec<VpnCriterion>> {
-    let snapshot = paths.load_snapshot()?;
-    Ok(snapshot.vpn_criteria().to_vec())
 }
