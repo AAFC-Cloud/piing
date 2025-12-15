@@ -1,6 +1,9 @@
 use crate::config::log_latency::LatencyColouration;
 use crate::config::log_latency::build_latency_body;
 use crate::config::log_latency::decode_latency_coloration;
+use crate::config::problem_sound::DEFAULT_PROBLEM_SOUND_PATH;
+use crate::config::problem_sound::ProblemSound;
+use crate::config::problem_sound::decode_problem_sound;
 use crate::config::targets::Target;
 use crate::config::targets::decode_targets;
 use crate::config::vpn_criterion::VpnCriterion;
@@ -21,6 +24,7 @@ pub struct ConfigSnapshot {
     pub targets: Vec<Target>,
     pub vpn_criteria: Vec<VpnCriterion>,
     pub latency_colouration: LatencyColouration,
+    pub problem_sound: ProblemSound,
 }
 
 impl ConfigSnapshot {
@@ -30,12 +34,14 @@ impl ConfigSnapshot {
         targets: Vec<Target>,
         vpn_criteria: Vec<VpnCriterion>,
         latency_colouration: LatencyColouration,
+        problem_sound: ProblemSound,
     ) -> Self {
         Self {
             files,
             targets,
             vpn_criteria,
             latency_colouration,
+            problem_sound,
         }
     }
 
@@ -54,6 +60,11 @@ impl ConfigSnapshot {
         &self.latency_colouration
     }
 
+    #[must_use]
+    pub fn problem_sound(&self) -> &ProblemSound {
+        &self.problem_sound
+    }
+
     /// # Errors
     /// Returns an error if reading or parsing any config file fails
     pub fn try_from_dir(dir: &Path) -> Result<Self> {
@@ -62,6 +73,7 @@ impl ConfigSnapshot {
         let mut vpn_criteria = Vec::new();
         let mut latency_rules = Vec::new();
         let mut latency_rules_found = false;
+        let mut problem_sound: Option<ProblemSound> = None;
 
         if dir.exists() {
             for entry in fs::read_dir(dir)? {
@@ -81,11 +93,32 @@ impl ConfigSnapshot {
                     latency_rules_found = true;
                 }
                 latency_rules.append(&mut decoded);
+                if let Some(sound) = decode_problem_sound(&path, &body)? {
+                    if problem_sound.is_some() {
+                        return Err(eyre::eyre!(
+                            "Multiple piing_problem_sound blocks found; only one is allowed"
+                        ));
+                    }
+                    problem_sound = Some(sound);
+                }
                 files.insert(path, body);
             }
         }
 
         let latency_colouration = LatencyColouration::from_rules_or_default(latency_rules);
+
+        let resolved_problem_sound = if let Some(sound) = problem_sound {
+            sound
+        } else {
+            let default_path = PathBuf::from(DEFAULT_PROBLEM_SOUND_PATH);
+            if !default_path.is_file() {
+                return Err(eyre::eyre!(
+                    "Default problem sound file missing at {}. Add a piing_problem_sound block to configure a valid path.",
+                    default_path.display()
+                ));
+            }
+            ProblemSound::new(default_path, 1.0)
+        };
 
         if !latency_rules_found {
             let body = build_latency_body("latency_defaults", &latency_colouration);
@@ -102,7 +135,13 @@ impl ConfigSnapshot {
             files.insert(file_path, body);
         }
 
-        Ok(Self::new(files, targets, vpn_criteria, latency_colouration))
+        Ok(Self::new(
+            files,
+            targets,
+            vpn_criteria,
+            latency_colouration,
+            resolved_problem_sound,
+        ))
     }
 }
 

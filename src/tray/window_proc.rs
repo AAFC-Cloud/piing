@@ -1,6 +1,7 @@
 use crate::cli::command::audit::AuditArgs;
 use crate::config::ConfigManager;
 use crate::home::PiingDirs;
+use crate::sound;
 use crate::tray::current_tray_icon;
 use crate::tray::set_tray_icon;
 use crate::ui::dialogs::retry_config_operation;
@@ -62,8 +63,9 @@ const CMD_SHOW_LOGS: usize = 0x2000;
 const CMD_HIDE_LOGS: usize = 0x2001;
 const CMD_OPEN_HOME: usize = 0x2002;
 const CMD_RELOAD_CONFIG: usize = 0x2003;
-const CMD_AUDIT: usize = 0x2004;
-const CMD_EXIT_APP: usize = 0x2005;
+const CMD_PLAY_SOUND: usize = 0x2004;
+const CMD_AUDIT: usize = 0x2005;
+const CMD_EXIT_APP: usize = 0x2006;
 
 #[derive(Clone)]
 pub struct TrayWindowConfig {
@@ -187,6 +189,13 @@ impl TrayWindowState {
         }
     }
 
+    fn play_problem_sound(&self) {
+        let snapshot = self.config_manager.store.snapshot();
+        if let Err(error) = sound::play_problem_sound(snapshot.problem_sound()) {
+            error!("Failed to play problem sound: {error}");
+        }
+    }
+
     fn run_audit(&mut self) {
         // Ensure we have a console to show output
         if self.console_mode != ConsoleMode::Owned {
@@ -219,6 +228,7 @@ impl TrayWindowState {
         unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null()) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_OPEN_HOME, w!("Open home folder")) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_RELOAD_CONFIG, w!("Reload config")) }.ok();
+        unsafe { AppendMenuW(menu, MF_STRING, CMD_PLAY_SOUND, w!("Play sound")) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_AUDIT, w!("Audit")) }.ok();
         unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null()) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_EXIT_APP, w!("Exit")) }.ok();
@@ -266,6 +276,7 @@ impl TrayWindowState {
             CMD_HIDE_LOGS => self.hide_logs(),
             CMD_OPEN_HOME => self.open_home_folder(),
             CMD_RELOAD_CONFIG => self.reload_config(hwnd),
+            CMD_PLAY_SOUND => self.play_problem_sound(),
             CMD_AUDIT => self.run_audit(),
             CMD_EXIT_APP => {
                 self.request_exit();

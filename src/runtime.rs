@@ -6,6 +6,7 @@ use crate::config::targets::Target;
 use crate::home::PiingDirs;
 use crate::ping::PingOutcome;
 use crate::ping::{self};
+use crate::sound;
 use crate::tray;
 use crate::ui::dialogs::retry_config_operation;
 use eyre::Result;
@@ -77,11 +78,13 @@ async fn ping_loop(
 ) -> eyre::Result<()> {
     let success_icon = get_icon_from_current_module(w!("green_check_icon"))?;
     let failure_icon = get_icon_from_current_module(w!("red_x_icon"))?;
+    let mut last_success_state: Option<bool> = None;
 
     loop {
         let ConfigSnapshot {
             targets,
             vpn_criteria,
+            problem_sound,
             ..
         } = config_store.snapshot();
 
@@ -93,9 +96,18 @@ async fn ping_loop(
             .invoke(&vpn_criteria)
             .unwrap_or(false);
 
-        if !targets.is_empty() {
+        if targets.is_empty() {
+            last_success_state = None;
+        } else {
             let outcomes = run_targets(&client, &targets, vpn_active).await;
+            if outcomes.iter().any(|outcome| !outcome.success)
+                && last_success_state != Some(false)
+                && let Err(error) = sound::play_problem_sound(&problem_sound)
+            {
+                warn!("Failed to play problem sound: {error}");
+            }
             apply_tray_icon(&outcomes, success_icon, failure_icon);
+            last_success_state = Some(outcomes.iter().all(|outcome| outcome.success));
         }
 
         let interval = targets

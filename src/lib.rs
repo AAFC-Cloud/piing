@@ -4,6 +4,7 @@ pub mod home;
 pub mod logging;
 pub mod ping;
 pub mod runtime;
+pub mod sound;
 pub mod tray;
 pub mod ui;
 

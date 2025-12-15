@@ -3,6 +3,7 @@ pub mod config_paths;
 pub mod config_snapshot;
 pub mod config_store;
 pub mod log_latency;
+pub mod problem_sound;
 pub mod targets;
 pub mod vpn_criterion;
 
@@ -13,5 +14,7 @@ pub use config_store::ConfigStore;
 pub use log_latency::LatencyColour;
 pub use log_latency::LatencyColouration;
 pub use log_latency::LatencyRule;
+pub use problem_sound::DEFAULT_PROBLEM_SOUND_PATH;
+pub use problem_sound::ProblemSound;
 pub use targets::Target;
 pub use vpn_criterion::VpnCriterion;
