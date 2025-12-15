@@ -30,11 +30,14 @@ impl SoundTestArgs {
     pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
         let config_manager = ConfigManager::initialize(dirs)?;
         let snapshot = config_manager.store.snapshot();
-        let sound_cfg = snapshot.problem_sound();
-        println!("Playing configured problem sound: {}", sound_cfg.path().display());
+        let sound_cfg = snapshot.problem_sound.clone();
+        println!(
+            "Playing configured problem sound: {}",
+            sound_cfg.path().display()
+        );
         // Block until playback completes so the CLI command actually plays
         // the sound before exiting.
-        sound::play_problem_sound_blocking(sound_cfg)?;
+        sound::play_problem_sound_blocking(&sound_cfg)?;
         println!("Playback completed");
         Ok(())
     }

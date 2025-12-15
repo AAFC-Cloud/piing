@@ -51,7 +51,7 @@ impl LogWritingBehaviour {
 
 fn load_latency_colouration(dirs: &PiingDirs) -> LatencyColouration {
     match ConfigSnapshot::try_from_dir(dirs.config_dir()) {
-        Ok(snapshot) => snapshot.latency_colouration().clone(),
+        Ok(snapshot) => snapshot.latency_colouration,
         Err(error) => {
             // Logging is not yet initialised, so keep this minimal.
             eprintln!(

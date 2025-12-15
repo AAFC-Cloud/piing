@@ -21,7 +21,7 @@ impl ListArgs {
     pub fn invoke(self, paths: &ConfigPaths) -> Result<()> {
         let adapters = NetworkAdapters::new()?;
         let snapshot = paths.load_snapshot()?;
-        let criteria = snapshot.vpn_criteria().to_vec();
+        let criteria = &snapshot.vpn_criteria;
         let mut matched_criteria: HashSet<String> = HashSet::new();
 
         // Collect matched criteria from all adapters
@@ -57,7 +57,7 @@ impl ListArgs {
         }
 
         println!("\nVPN Criteria:");
-        for criterion in &criteria {
+        for criterion in criteria {
             let name = criterion.display_name.as_deref().unwrap_or("(unnamed)");
             if matched_criteria.contains(name) {
                 println!("  ✅ {}", name.green());

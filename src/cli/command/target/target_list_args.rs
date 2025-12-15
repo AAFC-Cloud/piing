@@ -13,7 +13,7 @@ impl TargetListArgs {
         let paths = ConfigPaths::new(dirs);
         paths.ensure_defaults()?;
         let snapshot = paths.load_snapshot()?;
-        let targets = snapshot.targets().to_vec();
+        let targets = &snapshot.targets;
 
         if targets.is_empty() {
             println!("No targets configured.");

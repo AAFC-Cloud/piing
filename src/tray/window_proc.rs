@@ -182,7 +182,7 @@ impl TrayWindowState {
     fn reload_config(&self, owner: HWND) {
         match retry_config_operation(&self.dirs, Some(owner), || self.config_manager.reload()) {
             Ok(snapshot) => {
-                let target_count = snapshot.targets().len();
+                let target_count = snapshot.targets.len();
                 info!(targets = target_count, "Configuration reloaded");
             }
             Err(error) => error!("Configuration reload aborted: {error}"),
@@ -191,7 +191,7 @@ impl TrayWindowState {
 
     fn play_problem_sound(&self) {
         let snapshot = self.config_manager.store.snapshot();
-        if let Err(error) = sound::play_problem_sound(snapshot.problem_sound()) {
+        if let Err(error) = sound::play_problem_sound(snapshot.problem_sound.clone()) {
             error!("Failed to play problem sound: {error}");
         }
     }

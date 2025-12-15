@@ -3,7 +3,6 @@ use crate::config::log_latency::build_latency_body;
 use crate::config::log_latency::decode_latency_coloration;
 use crate::config::problem_sound::DEFAULT_PROBLEM_SOUND_PATH;
 use crate::config::problem_sound::ProblemSound;
-use std::sync::Arc;
 use crate::config::problem_sound::build_problem_sound_body;
 use crate::config::problem_sound::decode_problem_sound;
 use crate::config::targets::Target;
@@ -19,6 +18,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub struct ConfigSnapshot {
@@ -27,6 +28,7 @@ pub struct ConfigSnapshot {
     pub vpn_criteria: Vec<VpnCriterion>,
     pub latency_colouration: LatencyColouration,
     pub problem_sound: Arc<ProblemSound>,
+    pub snapshot_time: Instant,
 }
 
 impl ConfigSnapshot {
@@ -44,27 +46,8 @@ impl ConfigSnapshot {
             vpn_criteria,
             latency_colouration,
             problem_sound,
+            snapshot_time: Instant::now(),
         }
-    }
-
-    #[must_use]
-    pub fn targets(&self) -> &[Target] {
-        &self.targets
-    }
-
-    #[must_use]
-    pub fn vpn_criteria(&self) -> &[VpnCriterion] {
-        &self.vpn_criteria
-    }
-
-    #[must_use]
-    pub fn latency_colouration(&self) -> &LatencyColouration {
-        &self.latency_colouration
-    }
-
-    #[must_use]
-    pub fn problem_sound(&self) -> Arc<ProblemSound> {
-        self.problem_sound.clone()
     }
 
     /// # Errors

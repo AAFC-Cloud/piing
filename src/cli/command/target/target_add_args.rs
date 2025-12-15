@@ -46,7 +46,7 @@ impl TargetAddArgs {
         }
 
         if snapshot
-            .targets()
+            .targets
             .iter()
             .any(|target| target.id.name.eq_ignore_ascii_case(&sanitized))
         {

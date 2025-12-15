@@ -1,17 +1,18 @@
 use crate::config::ProblemSound;
-use std::sync::Arc;
 use eyre::Result;
 use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::thread;
-use tracing::warn;
 use tracing::debug;
+use tracing::warn;
+use windows::Win32::Media::Audio::waveOutGetVolume;
+use windows::Win32::Media::Audio::waveOutSetVolume;
 use windows::Win32::Media::Multimedia::mciGetErrorStringW;
 use windows::Win32::Media::Multimedia::mciSendStringW;
-use windows::Win32::Media::Audio::{waveOutGetVolume, waveOutSetVolume};
 use windows::core::PCWSTR;
 
 static ALIAS_COUNTER: AtomicUsize = AtomicUsize::new(1);
@@ -21,9 +22,6 @@ static ALIAS_COUNTER: AtomicUsize = AtomicUsize::new(1);
 /// # Errors
 /// Returns an error if the sound cannot be scheduled for playback.
 pub fn play_problem_sound(sound: Arc<ProblemSound>) -> Result<()> {
-    // Clone the Arc for the background thread; cloning an Arc is cheap and
-    // allows the caller to retain their reference while the playback runs.
-    let sound = sound.clone();
     debug!(?sound, "Scheduling problem sound for background playback");
     thread::spawn(move || {
         if let Err(error) = play_sound_internal(sound.path(), sound.volume()) {
@@ -46,28 +44,35 @@ pub fn prewarm_audio_session() {
     // session for the process which makes it visible in the volume
     // mixer.
     let mut current: u32 = 0;
-    let res = unsafe { waveOutGetVolume(None, &mut current) };
+    let res = unsafe { waveOutGetVolume(None, &raw mut current) };
     if res == 0 {
         let res2 = unsafe { waveOutSetVolume(None, current) };
         if res2 == 0 {
             debug!("Prewarmed audio session via waveOutGetVolume/waveOutSetVolume");
             return;
-        } else {
-            debug!(code = res2, "waveOutSetVolume failed while prewarming audio session");
-            return;
         }
+        debug!(
+            code = res2,
+            "waveOutSetVolume failed while prewarming audio session"
+        );
+        return;
     }
-    debug!(code = res, "waveOutGetVolume failed while prewarming audio session; continuing without prewarm");
+    debug!(
+        code = res,
+        "waveOutGetVolume failed while prewarming audio session; continuing without prewarm"
+    );
 }
 
 /// Play the configured problem sound synchronously and wait until playback
 /// completes. This is useful for CLI commands that should not return before
 /// the sound has finished.
-pub fn play_problem_sound_blocking(sound: Arc<ProblemSound>) -> Result<()> {
+/// # Errors
+/// Returns an error if playback fails
+pub fn play_problem_sound_blocking(sound: &Arc<ProblemSound>) -> Result<()> {
     play_sound_internal(sound.path(), sound.volume())
 }
 
-/// Note that MCI is a legacy feature and has been superseded by MediaPlayer.
+/// Note that MCI is a legacy feature and has been superseded by `MediaPlayer`.
 /// <https://learn.microsoft.com/en-us/windows/win32/multimedia/the-wait-notify-and-test-flags>
 /// <https://microsoft.github.io/windows-rs/features/#/63/search/MediaPlayer>
 fn play_sound_internal(path: &Path, volume: f32) -> Result<()> {
@@ -105,20 +110,18 @@ fn play_sound_internal(path: &Path, volume: f32) -> Result<()> {
     let volume_value = compute_volume_value(volume);
     // If this is a wave audio file, try to set device volume via waveOutSetVolume
     // which some drivers support even when `setaudio` fails.
-    if let Some(mci_type) = infer_mci_type(path) {
-        if mci_type == "waveaudio" {
-            match try_set_waveout_volume(volume_value) {
-                Ok(()) => {
-                    debug!(path = %path.display(), volume_value, "waveOutSetVolume succeeded; skipping setaudio");
-                    let play_cmd = build_play_cmd(&alias);
-                    let res = send_mci(&play_cmd);
-                    let close_cmd = build_close_cmd(&alias);
-                    let _ = send_mci(&close_cmd);
-                    return res;
-                }
-                Err(err) => {
-                    debug!(path = %path.display(), error = %err, "waveOutSetVolume failed; falling back to setaudio variants");
-                }
+    if let Some("waveaudio") = infer_mci_type(path) {
+        match try_set_waveout_volume(volume_value) {
+            Ok(()) => {
+                debug!(path = %path.display(), volume_value, "waveOutSetVolume succeeded; skipping setaudio");
+                let play_cmd = build_play_cmd(&alias);
+                let res = send_mci(&play_cmd);
+                let close_cmd = build_close_cmd(&alias);
+                let _ = send_mci(&close_cmd);
+                return res;
+            }
+            Err(err) => {
+                debug!(path = %path.display(), error = %err, "waveOutSetVolume failed; falling back to setaudio variants");
             }
         }
     }
@@ -191,17 +194,19 @@ fn build_open_cmd(path: &Path, alias: &str) -> String {
 }
 
 fn build_open_cmd_with_type(path: &Path, alias: &str, mci_type: &str) -> String {
-    format!("open \"{}\" type {mci_type} alias {alias}", path.to_string_lossy())
+    format!(
+        "open \"{}\" type {mci_type} alias {alias}",
+        path.to_string_lossy()
+    )
 }
 
 fn infer_mci_type(path: &Path) -> Option<&'static str> {
     path.extension()
         .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_lowercase())
+        .map(str::to_lowercase)
         .and_then(|ext| match ext.as_str() {
             "wav" => Some("waveaudio"),
-            "mp3" => Some("mpegvideo"),
-            "wma" => Some("mpegvideo"),
+            "mp3" | "wma" => Some("mpegvideo"),
             _ => None,
         })
 }
@@ -238,7 +243,7 @@ fn build_close_cmd(alias: &str) -> String {
 fn try_set_waveout_volume(volume_value: u32) -> Result<()> {
     // MCI uses 0..1000 for volume; Windows waveOut uses 0..0xFFFF per channel.
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
-    let scaled = ((volume_value as f64 / 1000.0) * 0xFFFF as f64).round() as u32;
+    let scaled = ((f64::from(volume_value) / 1000.0) * f64::from(0xFFFFu32)).round() as u32;
     let dw_volume = (scaled << 16) | (scaled & 0xFFFF);
     // Use the WAVE_MAPPER device (represented by HWAVEOUT(0) here).
     // Passing None uses the WAVE_MAPPER (default) device.
@@ -254,7 +259,6 @@ fn try_set_waveout_volume(volume_value: u32) -> Result<()> {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    use std::sync::Arc;
 
     #[test]
     fn open_cmd_does_not_force_waveaudio() {
@@ -280,7 +284,10 @@ mod tests {
         assert_eq!(set, "setaudio piing_problem_sound_1 output volume to 123");
 
         let variants = build_set_cmd_variants("piing_problem_sound_1", 123);
-        assert_eq!(variants[0], "setaudio piing_problem_sound_1 output volume to 123");
+        assert_eq!(
+            variants[0],
+            "setaudio piing_problem_sound_1 output volume to 123"
+        );
         assert_eq!(variants[1], "setaudio piing_problem_sound_1 volume to 123");
     }
 
@@ -292,8 +299,11 @@ mod tests {
 
     #[test]
     fn blocking_play_fails_for_missing_file() {
-        let sound = Arc::new(crate::config::ProblemSound::new(PathBuf::from(r"C:\nope\missing.wav"), 1.0));
-        let res = play_problem_sound_blocking(sound);
+        let sound = Arc::new(crate::config::ProblemSound::new(
+            PathBuf::from(r"C:\nope\missing.wav"),
+            1.0,
+        ));
+        let res = play_problem_sound_blocking(&sound);
         assert!(res.is_err());
     }
 }

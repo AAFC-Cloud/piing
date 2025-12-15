@@ -1,9 +1,9 @@
 use crate::cli::command::audit::AuditArgs;
 use crate::cli::command::home::HomeArgs;
 use crate::cli::command::run::RunArgs;
+use crate::cli::command::sound::SoundArgs;
 use crate::cli::command::target::TargetArgs;
 use crate::cli::command::vpn::VpnArgs;
-use crate::cli::command::sound::SoundArgs;
 use crate::cli::global_args::GlobalArgs;
 use crate::home::PiingDirs;
 use clap::Subcommand;
