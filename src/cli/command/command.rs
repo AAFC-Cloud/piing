@@ -3,6 +3,7 @@ use crate::cli::command::home::HomeArgs;
 use crate::cli::command::run::RunArgs;
 use crate::cli::command::target::TargetArgs;
 use crate::cli::command::vpn::VpnArgs;
+use crate::cli::command::sound::SoundArgs;
 use crate::cli::global_args::GlobalArgs;
 use crate::home::PiingDirs;
 use clap::Subcommand;
@@ -20,6 +21,8 @@ pub enum Command {
     Vpn(VpnArgs),
     /// Print the piing home directory
     Home(HomeArgs),
+    /// Play or test configured sounds
+    Sound(SoundArgs),
 }
 
 impl Default for Command {
@@ -64,6 +67,7 @@ impl Command {
             Command::Audit(args) => args.invoke(dirs)?,
             Command::Vpn(args) => args.invoke(dirs)?,
             Command::Home(args) => args.invoke(dirs)?,
+            Command::Sound(args) => args.invoke(dirs)?,
         }
         Ok(())
     }

@@ -10,13 +10,13 @@ function Ensure-Elevated {
   $isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
 
   if (-not $isAdmin) {
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = (Get-Process -Id $PID).Path
-    $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
-    $psi.Verb = "runas"
+    # Keep it simple: assume `pwsh` is on PATH and re-launch the script elevated.
+    $scriptPath = if ($PSCommandPath) { $PSCommandPath } else { $MyInvocation.MyCommand.Path }
+    $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $scriptPath)
+
     try {
-      $p = [System.Diagnostics.Process]::Start($psi)
-      if ($p) { exit }
+      Start-Process -FilePath pwsh -ArgumentList $argList -Verb RunAs -ErrorAction Stop
+      exit
     } catch {
       Write-Error "Elevation was canceled or failed. Exiting."
       exit 1

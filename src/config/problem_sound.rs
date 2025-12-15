@@ -1,11 +1,16 @@
 use eyre::Context as _;
 use eyre::Result;
+use hcl::edit::Decorated;
+use hcl::edit::Ident;
+use hcl::edit::expr::Expression;
+use hcl::edit::structure::Attribute;
+use hcl::edit::structure::Block;
 use hcl::edit::structure::Body;
 use hcl::edit::structure::Structure;
 use std::path::Path;
 use std::path::PathBuf;
 
-pub const DEFAULT_PROBLEM_SOUND_PATH: &str = r"C:\\Windows\\Media\\Speech Off.wav";
+pub const DEFAULT_PROBLEM_SOUND_PATH: &str = r"C:\Windows\Media\Speech Off.wav";
 const DEFAULT_VOLUME: f32 = 1.0;
 
 #[derive(Debug, Clone)]
@@ -78,13 +83,18 @@ pub fn decode_problem_sound(file_path: &Path, body: &Body) -> Result<Option<Prob
         validate_sound_path(&path)?;
 
         let volume = match block.body.get_attribute("volume") {
-            Some(attr) => parse_volume(attr.value.as_number().and_then(hcl::Number::as_f64))
-                .wrap_err_with(|| {
+            Some(attr) => {
+                // Accept numeric or string values for volume so builders can emit either.
+                let raw_num = attr.value.as_number().and_then(hcl::Number::as_f64);
+                let raw_from_str = attr.value.as_str().and_then(|s| s.parse::<f64>().ok());
+                let raw = raw_num.or(raw_from_str);
+                parse_volume(raw).wrap_err_with(|| {
                     format!(
                         "Invalid 'volume' value in piing_problem_sound block inside {}",
                         file_path.display()
                     )
-                })?,
+                })?
+            }
             None => DEFAULT_VOLUME,
         };
 
@@ -92,6 +102,31 @@ pub fn decode_problem_sound(file_path: &Path, body: &Body) -> Result<Option<Prob
     }
 
     Ok(sound)
+}
+
+/// Build a default `piing_problem_sound` resource body with the provided name,
+/// `path`, and `volume`.
+#[must_use]
+pub fn build_problem_sound_body(name: &str, path: &Path, volume: f32) -> Body {
+    let mut block = Block::builder(Ident::new("resource"))
+        .label("piing_problem_sound")
+        .label(name)
+        .build();
+
+    let mut body = Body::builder();
+    body = body.attribute(Attribute::new(
+        Decorated::new(Ident::new("path")),
+        Expression::String(Decorated::new(path.to_string_lossy().to_string())),
+    ));
+    // Emit volume as a string to match other builders, but parsing accepts both
+    // string and numeric forms.
+    body = body.attribute(Attribute::new(
+        Decorated::new(Ident::new("volume")),
+        Expression::String(Decorated::new(volume.to_string())),
+    ));
+
+    block.body = body.build();
+    Body::builder().block(block).build()
 }
 
 fn validate_sound_path(path: &Path) -> Result<()> {

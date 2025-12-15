@@ -3,6 +3,8 @@ use crate::config::log_latency::build_latency_body;
 use crate::config::log_latency::decode_latency_coloration;
 use crate::config::problem_sound::DEFAULT_PROBLEM_SOUND_PATH;
 use crate::config::problem_sound::ProblemSound;
+use std::sync::Arc;
+use crate::config::problem_sound::build_problem_sound_body;
 use crate::config::problem_sound::decode_problem_sound;
 use crate::config::targets::Target;
 use crate::config::targets::decode_targets;
@@ -24,7 +26,7 @@ pub struct ConfigSnapshot {
     pub targets: Vec<Target>,
     pub vpn_criteria: Vec<VpnCriterion>,
     pub latency_colouration: LatencyColouration,
-    pub problem_sound: ProblemSound,
+    pub problem_sound: Arc<ProblemSound>,
 }
 
 impl ConfigSnapshot {
@@ -34,7 +36,7 @@ impl ConfigSnapshot {
         targets: Vec<Target>,
         vpn_criteria: Vec<VpnCriterion>,
         latency_colouration: LatencyColouration,
-        problem_sound: ProblemSound,
+        problem_sound: Arc<ProblemSound>,
     ) -> Self {
         Self {
             files,
@@ -61,8 +63,8 @@ impl ConfigSnapshot {
     }
 
     #[must_use]
-    pub fn problem_sound(&self) -> &ProblemSound {
-        &self.problem_sound
+    pub fn problem_sound(&self) -> Arc<ProblemSound> {
+        self.problem_sound.clone()
     }
 
     /// # Errors
@@ -74,6 +76,7 @@ impl ConfigSnapshot {
         let mut latency_rules = Vec::new();
         let mut latency_rules_found = false;
         let mut problem_sound: Option<ProblemSound> = None;
+        let mut problem_sound_found = false;
 
         if dir.exists() {
             for entry in fs::read_dir(dir)? {
@@ -100,6 +103,7 @@ impl ConfigSnapshot {
                         ));
                     }
                     problem_sound = Some(sound);
+                    problem_sound_found = true;
                 }
                 files.insert(path, body);
             }
@@ -108,7 +112,7 @@ impl ConfigSnapshot {
         let latency_colouration = LatencyColouration::from_rules_or_default(latency_rules);
 
         let resolved_problem_sound = if let Some(sound) = problem_sound {
-            sound
+            Arc::new(sound)
         } else {
             let default_path = PathBuf::from(DEFAULT_PROBLEM_SOUND_PATH);
             if !default_path.is_file() {
@@ -117,8 +121,29 @@ impl ConfigSnapshot {
                     default_path.display()
                 ));
             }
-            ProblemSound::new(default_path, 1.0)
+            Arc::new(ProblemSound::new(default_path, 1.0))
         };
+
+        if !problem_sound_found {
+            // Write a default problem sound block to the config dir so users see the
+            // default and can modify it if desired.
+            let body = build_problem_sound_body(
+                "problem_sound",
+                resolved_problem_sound.path(),
+                resolved_problem_sound.volume(),
+            );
+            let file_path = unique_file_path(dir, "problem_sound");
+            if let Some(parent) = file_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&file_path, body.to_string()).wrap_err_with(|| {
+                format!(
+                    "Failed to write default problem sound config to {}",
+                    file_path.display()
+                )
+            })?;
+            files.insert(file_path, body);
+        }
 
         if !latency_rules_found {
             let body = build_latency_body("latency_defaults", &latency_colouration);

@@ -102,7 +102,7 @@ async fn ping_loop(
             let outcomes = run_targets(&client, &targets, vpn_active).await;
             if outcomes.iter().any(|outcome| !outcome.success)
                 && last_success_state != Some(false)
-                && let Err(error) = sound::play_problem_sound(&problem_sound)
+                && let Err(error) = sound::play_problem_sound(problem_sound.clone())
             {
                 warn!("Failed to play problem sound: {error}");
             }
