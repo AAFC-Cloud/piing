@@ -11,8 +11,7 @@ use tracing::warn;
 use tracing::debug;
 use windows::Win32::Media::Multimedia::mciGetErrorStringW;
 use windows::Win32::Media::Multimedia::mciSendStringW;
-use windows::Win32::Media::Audio::waveOutSetVolume;
-use windows::Win32::Media::Audio::HWAVEOUT;
+use windows::Win32::Media::Audio::{waveOutGetVolume, waveOutSetVolume};
 use windows::core::PCWSTR;
 
 static ALIAS_COUNTER: AtomicUsize = AtomicUsize::new(1);
@@ -32,6 +31,33 @@ pub fn play_problem_sound(sound: Arc<ProblemSound>) -> Result<()> {
         }
     });
     Ok(())
+}
+
+/// Pre-warm the Windows audio subsystem so the process appears in the
+/// system volume mixer as soon as the application starts. This is a
+/// best-effort operation that attempts to query the current device
+/// volume and set it back; doing so tends to cause Windows to create an
+/// audio session for the process which makes it show up in the mixer.
+///
+/// Failures are non-fatal and are logged for diagnostics.
+pub fn prewarm_audio_session() {
+    // Try to query and then set the current volume back. This does not
+    // change the device volume but can prompt the OS to create an audio
+    // session for the process which makes it visible in the volume
+    // mixer.
+    let mut current: u32 = 0;
+    let res = unsafe { waveOutGetVolume(None, &mut current) };
+    if res == 0 {
+        let res2 = unsafe { waveOutSetVolume(None, current) };
+        if res2 == 0 {
+            debug!("Prewarmed audio session via waveOutGetVolume/waveOutSetVolume");
+            return;
+        } else {
+            debug!(code = res2, "waveOutSetVolume failed while prewarming audio session");
+            return;
+        }
+    }
+    debug!(code = res, "waveOutGetVolume failed while prewarming audio session; continuing without prewarm");
 }
 
 /// Play the configured problem sound synchronously and wait until playback

@@ -26,6 +26,10 @@ use windows::core::w;
 /// Returns an error if runtime initialization or tray execution fails
 pub fn run(dirs: &PiingDirs) -> Result<()> {
     let config_manager = retry_config_operation(dirs, None, || ConfigManager::initialize(dirs))?;
+    // Pre-warm audio so the process appears in the Windows volume mixer
+    // immediately on startup instead of waiting until the first sound
+    // is played. This is best-effort and non-fatal.
+    sound::prewarm_audio_session();
 
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     let ping_store = config_manager.store.clone();
