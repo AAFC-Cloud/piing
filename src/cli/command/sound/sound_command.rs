@@ -1,5 +1,4 @@
 use crate::config::ConfigManager;
-use crate::home::PiingDirs;
 use crate::sound;
 use clap::Args;
 use clap::Subcommand;
@@ -14,9 +13,9 @@ pub enum SoundCommand {
 impl SoundCommand {
     /// # Errors
     /// Returns an error if the test fails to play the configured sound
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         match self {
-            SoundCommand::Test(args) => args.invoke(dirs),
+            SoundCommand::Test(args) => args.invoke(),
         }
     }
 }
@@ -27,8 +26,8 @@ pub struct SoundTestArgs {}
 impl SoundTestArgs {
     /// # Errors
     /// Returns an error if loading config or playing the sound fails
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
-        let config_manager = ConfigManager::initialize(dirs)?;
+    pub fn invoke(self) -> Result<()> {
+        let config_manager = ConfigManager::initialize()?;
         let snapshot = config_manager.store.snapshot();
         let sound_cfg = snapshot.problem_sound.clone();
         println!(

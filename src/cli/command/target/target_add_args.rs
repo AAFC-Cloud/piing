@@ -1,7 +1,6 @@
 use crate::config::ConfigPaths;
 use crate::config::targets::build_block;
 use crate::config::targets::sanitize_label;
-use crate::home::PiingDirs;
 use crate::ping::PingMode;
 use crate::ping::parse_destination;
 use clap::Args;
@@ -27,12 +26,12 @@ pub struct TargetAddArgs {
 impl TargetAddArgs {
     /// # Errors
     /// Returns an error if config operations fail
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         if self.value.trim().is_empty() {
             eyre::bail!("Target value cannot be empty");
         }
 
-        let paths = ConfigPaths::new(dirs);
+        let paths = ConfigPaths::new();
         paths.ensure_defaults()?;
 
         let snapshot = paths.load_snapshot()?;

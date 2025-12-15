@@ -1,6 +1,6 @@
 use crate::cli::command::audit::AuditArgs;
 use crate::config::ConfigManager;
-use crate::home::PiingDirs;
+use crate::home::PIING_HOME;
 use crate::sound;
 use crate::tray::current_tray_icon;
 use crate::tray::set_tray_icon;
@@ -72,7 +72,6 @@ pub struct TrayWindowConfig {
     pub inherited_console_available: bool,
     pub log_buffer: BufferSink,
     pub config_manager: ConfigManager,
-    pub dirs: PiingDirs,
     pub shutdown_tx: ShutdownSender,
 }
 
@@ -96,7 +95,6 @@ struct TrayWindowState {
     inherited_console_available: bool,
     log_buffer: BufferSink,
     config_manager: ConfigManager,
-    dirs: PiingDirs,
     shutdown_tx: ShutdownSender,
 }
 
@@ -112,7 +110,6 @@ impl TrayWindowState {
             inherited_console_available: config.inherited_console_available,
             log_buffer: config.log_buffer.clone(),
             config_manager: config.config_manager.clone(),
-            dirs: config.dirs.clone(),
             shutdown_tx: config.shutdown_tx.clone(),
         }
     }
@@ -173,14 +170,14 @@ impl TrayWindowState {
         Ok(())
     }
 
-    fn open_home_folder(&self) {
-        if let Err(error) = Command::new("explorer").arg(self.dirs.home_dir()).spawn() {
+    fn open_home_folder() {
+        if let Err(error) = Command::new("explorer").arg(PIING_HOME.as_os_str()).spawn() {
             error!("Failed to open home folder: {error}");
         }
     }
 
     fn reload_config(&self, owner: HWND) {
-        match retry_config_operation(&self.dirs, Some(owner), || self.config_manager.reload()) {
+        match retry_config_operation(Some(owner), || self.config_manager.reload()) {
             Ok(snapshot) => {
                 let target_count = snapshot.targets.len();
                 info!(targets = target_count, "Configuration reloaded");
@@ -203,7 +200,7 @@ impl TrayWindowState {
         }
 
         // Run audit
-        match AuditArgs::default().invoke(&self.dirs) {
+        match AuditArgs::default().invoke() {
             Ok(()) => info!("Audit completed"),
             Err(error) => error!("Audit failed: {error}"),
         }
@@ -274,7 +271,7 @@ impl TrayWindowState {
         match selection as usize {
             CMD_SHOW_LOGS => self.show_logs(),
             CMD_HIDE_LOGS => self.hide_logs(),
-            CMD_OPEN_HOME => self.open_home_folder(),
+            CMD_OPEN_HOME => Self::open_home_folder(),
             CMD_RELOAD_CONFIG => self.reload_config(hwnd),
             CMD_PLAY_SOUND => self.play_problem_sound(),
             CMD_AUDIT => self.run_audit(),

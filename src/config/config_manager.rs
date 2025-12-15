@@ -1,7 +1,6 @@
 use crate::config::ConfigPaths;
 use crate::config::ConfigSnapshot;
 use crate::config::ConfigStore;
-use crate::home::PiingDirs;
 use eyre::Result;
 
 #[derive(Debug, Clone)]
@@ -13,8 +12,8 @@ pub struct ConfigManager {
 impl ConfigManager {
     /// # Errors
     /// Returns an error if config initialization fails
-    pub fn initialize(dirs: &PiingDirs) -> Result<Self> {
-        let paths = ConfigPaths::new(dirs);
+    pub fn initialize() -> Result<Self> {
+        let paths = ConfigPaths::new();
         paths.ensure_defaults()?;
         let snapshot = paths.load_snapshot()?;
         let store = ConfigStore::new(snapshot);

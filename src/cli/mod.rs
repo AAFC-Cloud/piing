@@ -3,7 +3,6 @@ pub mod global_args;
 
 use crate::cli::command::Command;
 use crate::cli::global_args::GlobalArgs;
-use crate::home::PiingDirs;
 use clap::Parser;
 
 #[derive(Debug, Parser)]
@@ -23,8 +22,7 @@ impl Cli {
     /// # Errors
     /// Returns an error if command execution fails
     pub fn invoke(self) -> eyre::Result<()> {
-        let dirs = PiingDirs::ensure()?;
         let command = self.command.unwrap_or_default();
-        command.invoke(self.global_args, &dirs)
+        command.invoke(&self.global_args)
     }
 }

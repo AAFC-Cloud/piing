@@ -1,5 +1,3 @@
-use crate::cli::global_args::GlobalArgs;
-use crate::home::PiingDirs;
 use crate::runtime;
 use clap::Args;
 use eyre::Result;
@@ -10,7 +8,7 @@ pub struct RunArgs {}
 impl RunArgs {
     /// # Errors
     /// Returns an error if the runtime fails to start
-    pub fn invoke(self, _globals: GlobalArgs, dirs: &PiingDirs) -> Result<()> {
-        runtime::run(dirs)
+    pub fn invoke(self) -> Result<()> {
+        runtime::run()
     }
 }

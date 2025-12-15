@@ -1,6 +1,6 @@
 use crate::config::ConfigSnapshot;
 use crate::config::LatencyColouration;
-use crate::home::PiingDirs;
+use crate::home::PIING_HOME;
 use chrono::Local;
 use eyre::Result;
 use owo_colors::OwoColorize;
@@ -36,12 +36,13 @@ pub enum LogWritingBehaviour {
 
 impl LogWritingBehaviour {
     #[must_use]
-    pub fn log_output_path(self, dirs: &PiingDirs) -> Option<PathBuf> {
+    pub fn log_output_path(self) -> Option<PathBuf> {
         match self {
             LogWritingBehaviour::TerminalOnly => None,
             LogWritingBehaviour::TerminalAndDefaultFile => Some({
                 let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S");
-                dirs.logs_dir()
+                PIING_HOME
+                    .logs_dir()
                     .join(format!("piing_{timestamp}.log.ndjson"))
             }),
             LogWritingBehaviour::TerminalAndSpecificFile(path) => Some(path),
@@ -49,8 +50,8 @@ impl LogWritingBehaviour {
     }
 }
 
-fn load_latency_colouration(dirs: &PiingDirs) -> LatencyColouration {
-    match ConfigSnapshot::try_from_dir(dirs.config_dir()) {
+fn load_latency_colouration() -> LatencyColouration {
+    match ConfigSnapshot::try_from_dir(PIING_HOME.config_dir()) {
         Ok(snapshot) => snapshot.latency_colouration,
         Err(error) => {
             // Logging is not yet initialised, so keep this minimal.
@@ -67,12 +68,8 @@ fn load_latency_colouration(dirs: &PiingDirs) -> LatencyColouration {
 ///
 /// # Panics
 /// Panics if the log file mutex is poisoned
-pub fn initialize(
-    level: Level,
-    dirs: &PiingDirs,
-    behaviour: LogWritingBehaviour,
-) -> Result<Option<PathBuf>> {
-    let log_path = behaviour.log_output_path(dirs);
+pub fn initialize(level: Level, behaviour: LogWritingBehaviour) -> Result<Option<PathBuf>> {
+    let log_path = behaviour.log_output_path();
 
     let shared_file = if let Some(ref path) = log_path {
         if let Some(parent) = path.parent() {
@@ -84,7 +81,7 @@ pub fn initialize(
         None
     };
 
-    let latency_colouration = load_latency_colouration(dirs);
+    let latency_colouration = load_latency_colouration();
     let show_location = matches!(level, Level::DEBUG | Level::TRACE);
 
     let stderr_layer = tracing_subscriber::fmt::layer()

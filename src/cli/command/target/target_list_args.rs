@@ -1,5 +1,4 @@
 use crate::config::ConfigPaths;
-use crate::home::PiingDirs;
 use clap::Args;
 use eyre::Result;
 
@@ -9,8 +8,8 @@ pub struct TargetListArgs {}
 impl TargetListArgs {
     /// # Errors
     /// Returns an error if config operations fail
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
-        let paths = ConfigPaths::new(dirs);
+    pub fn invoke(self) -> Result<()> {
+        let paths = ConfigPaths::new();
         paths.ensure_defaults()?;
         let snapshot = paths.load_snapshot()?;
         let targets = &snapshot.targets;

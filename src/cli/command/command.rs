@@ -5,7 +5,6 @@ use crate::cli::command::sound::SoundArgs;
 use crate::cli::command::target::TargetArgs;
 use crate::cli::command::vpn::VpnArgs;
 use crate::cli::global_args::GlobalArgs;
-use crate::home::PiingDirs;
 use clap::Subcommand;
 use eyre::Result;
 
@@ -34,7 +33,7 @@ impl Default for Command {
 impl Command {
     /// # Errors
     /// Returns an error if command execution or logging initialization fails
-    pub fn invoke(self, globals: GlobalArgs, dirs: &PiingDirs) -> Result<()> {
+    pub fn invoke(self, globals: &GlobalArgs) -> Result<()> {
         use crate::logging::LogWritingBehaviour;
         use crate::logging::{self};
 
@@ -59,15 +58,15 @@ impl Command {
         };
 
         // Initialize logging for all commands
-        logging::initialize(globals.log_level(), dirs, log_behaviour)?;
+        logging::initialize(globals.log_level(), log_behaviour)?;
 
         match self {
-            Command::Run(args) => args.invoke(globals, dirs)?,
-            Command::Target(args) => args.invoke(dirs)?,
-            Command::Audit(args) => args.invoke(dirs)?,
-            Command::Vpn(args) => args.invoke(dirs)?,
-            Command::Home(args) => args.invoke(dirs)?,
-            Command::Sound(args) => args.invoke(dirs)?,
+            Command::Run(args) => args.invoke()?,
+            Command::Target(args) => args.invoke()?,
+            Command::Audit(args) => args.invoke()?,
+            Command::Vpn(args) => args.invoke()?,
+            Command::Home(args) => args.invoke()?,
+            Command::Sound(args) => args.invoke()?,
         }
         Ok(())
     }

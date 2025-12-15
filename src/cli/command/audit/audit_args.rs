@@ -1,4 +1,4 @@
-use crate::home::PiingDirs;
+use crate::home::PIING_HOME;
 use chrono::DateTime;
 use chrono::Datelike;
 use chrono::Duration;
@@ -40,10 +40,10 @@ impl AuditArgs {
         clippy::too_many_lines,
         reason = "invoke orchestrates reporting and is intentionally verbose"
     )]
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         println!("Discovering log files...\n");
 
-        let logs_dir = dirs.logs_dir();
+        let logs_dir = PIING_HOME.logs_dir();
 
         if !logs_dir.exists() {
             println!("Logs directory does not exist: {}", logs_dir.display());
@@ -52,7 +52,7 @@ impl AuditArgs {
 
         let mut log_files = Vec::new();
 
-        if let Ok(entries) = std::fs::read_dir(logs_dir) {
+        if let Ok(entries) = std::fs::read_dir(&logs_dir) {
             for entry in entries.flatten() {
                 if let Ok(metadata) = entry.metadata()
                     && metadata.is_file()

@@ -1,7 +1,6 @@
 use crate::cli::command::target::target_add_args::TargetAddArgs;
 use crate::cli::command::target::target_list_args::TargetListArgs;
 use crate::cli::command::target::target_remove_args::TargetRemoveArgs;
-use crate::home::PiingDirs;
 use clap::Subcommand;
 use eyre::Result;
 
@@ -18,11 +17,11 @@ pub enum TargetCommand {
 impl TargetCommand {
     /// # Errors
     /// Returns an error if the target subcommand fails
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         match self {
-            TargetCommand::Add(args) => args.invoke(dirs),
-            TargetCommand::Remove(args) => args.invoke(dirs),
-            TargetCommand::List(args) => args.invoke(dirs),
+            TargetCommand::Add(args) => args.invoke(),
+            TargetCommand::Remove(args) => args.invoke(),
+            TargetCommand::List(args) => args.invoke(),
         }
     }
 }

@@ -1,7 +1,6 @@
 mod window_proc;
 
 use crate::config::ConfigManager;
-use crate::home::PiingDirs;
 use eyre::Context;
 use eyre::Result;
 use eyre::eyre;
@@ -30,7 +29,6 @@ use windows::core::w;
 pub struct TrayContext {
     pub inherited_console_available: bool,
     pub config_manager: ConfigManager,
-    pub dirs: PiingDirs,
     pub shutdown_tx: watch::Sender<bool>,
 }
 
@@ -101,7 +99,6 @@ pub fn run_tray(context: &TrayContext) -> Result<()> {
         inherited_console_available: started_with_inherited_console,
         log_buffer: LOG_BUFFER.clone(),
         config_manager: context.config_manager.clone(),
-        dirs: context.dirs.clone(),
         shutdown_tx: context.shutdown_tx.clone(),
     })?;
 

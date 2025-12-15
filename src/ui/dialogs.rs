@@ -1,4 +1,4 @@
-use crate::home::PiingDirs;
+use crate::home::PIING_HOME;
 use eyre::Context;
 use eyre::Result;
 use std::io::Write;
@@ -37,11 +37,7 @@ pub enum ConfigDialogChoice {
 
 /// # Errors
 /// Returns an error if the provided operation ultimately fails after user choice
-pub fn retry_config_operation<F, T>(
-    dirs: &PiingDirs,
-    owner: Option<HWND>,
-    mut operation: F,
-) -> Result<T>
+pub fn retry_config_operation<F, T>(owner: Option<HWND>, mut operation: F) -> Result<T>
 where
     F: FnMut() -> Result<T>,
 {
@@ -53,13 +49,13 @@ where
                 loop {
                     let message = format!(
                         "{error}\n\npiing home: {}\nconfig dir: {}\n\nFix the configuration files, then choose 'Reload now' after saving, or use the tray reload action.",
-                        dirs.home_dir().display(),
-                        dirs.config_dir().display()
+                        PIING_HOME.display(),
+                        PIING_HOME.config_dir().display()
                     );
                     match show_config_error_dialog(&message, owner)? {
                         ConfigDialogChoice::Ok => return Err(error),
                         ConfigDialogChoice::OpenHomeDir => {
-                            if let Err(open_error) = open_home_directory(dirs) {
+                            if let Err(open_error) = open_home_directory() {
                                 error!(?open_error, "Failed to open piing home directory");
                             }
                         }
@@ -177,9 +173,9 @@ fn show_logs_console() {
 
 /// # Errors
 /// Returns an error if launching Explorer fails
-pub fn open_home_directory(dirs: &PiingDirs) -> Result<()> {
+pub fn open_home_directory() -> Result<()> {
     Command::new("explorer")
-        .arg(dirs.home_dir())
+        .arg(PIING_HOME.as_os_str())
         .spawn()
         .wrap_err("Failed to launch explorer")?;
     Ok(())

@@ -2,7 +2,6 @@ pub mod adapter;
 pub mod check;
 
 use crate::config::ConfigPaths;
-use crate::home::PiingDirs;
 use clap::Args;
 use clap::Subcommand;
 use eyre::Result;
@@ -24,8 +23,8 @@ pub enum VpnCommand {
 impl VpnArgs {
     /// # Errors
     /// Returns an error if the command fails
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
-        let paths = ConfigPaths::new(dirs);
+    pub fn invoke(self) -> Result<()> {
+        let paths = ConfigPaths::new();
         paths.ensure_defaults()?;
 
         match self.command {

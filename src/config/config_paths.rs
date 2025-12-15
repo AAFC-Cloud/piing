@@ -1,5 +1,5 @@
 use crate::config::ConfigSnapshot;
-use crate::home::PiingDirs;
+use crate::home::PIING_HOME;
 use chrono::Utc;
 use eyre::Context;
 use eyre::Result;
@@ -12,12 +12,16 @@ use std::path::PathBuf;
 pub struct ConfigPaths {
     config_dir: PathBuf,
 }
-
+impl Default for ConfigPaths {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl ConfigPaths {
     #[must_use]
-    pub fn new(dirs: &PiingDirs) -> Self {
+    pub fn new() -> Self {
         Self {
-            config_dir: dirs.config_dir().to_path_buf(),
+            config_dir: PIING_HOME.config_dir(),
         }
     }
 

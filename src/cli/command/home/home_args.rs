@@ -1,4 +1,4 @@
-use crate::home::PiingDirs;
+use crate::home::PIING_HOME;
 use clap::Args;
 use eyre::Result;
 
@@ -8,8 +8,8 @@ pub struct HomeArgs {}
 impl HomeArgs {
     /// # Errors
     /// Returns an error if retrieving the home directory fails
-    pub fn invoke(self, dirs: &PiingDirs) -> Result<()> {
-        println!("{}", dirs.home_dir().display());
+    pub fn invoke(self) -> Result<()> {
+        println!("{}", PIING_HOME.display());
         Ok(())
     }
 }

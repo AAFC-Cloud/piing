@@ -1,4 +1,3 @@
-use crate::home::PiingDirs;
 use clap::Args;
 use eyre::Result;
 
@@ -10,7 +9,7 @@ pub struct TargetRemoveArgs {
 impl TargetRemoveArgs {
     /// # Errors
     /// Returns an error if command execution fails
-    pub fn invoke(self, _dirs: &PiingDirs) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         println!(
             "Stub: target removal for '{}' is not implemented yet.",
             self.name

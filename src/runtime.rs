@@ -1,7 +1,6 @@
 use crate::config::ConfigManager;
 use crate::config::ConfigStore;
 use crate::config::targets::Target;
-use crate::home::PiingDirs;
 use crate::ping::PingOutcome;
 use crate::ping::{self};
 use crate::sound;
@@ -23,8 +22,8 @@ use windows::core::w;
 
 /// # Errors
 /// Returns an error if runtime initialization or tray execution fails
-pub fn run(dirs: &PiingDirs) -> Result<()> {
-    let config_manager = retry_config_operation(dirs, None, || ConfigManager::initialize(dirs))?;
+pub fn run() -> Result<()> {
+    let config_manager = retry_config_operation(None, ConfigManager::initialize)?;
     // Pre-warm audio so the process appears in the Windows volume mixer
     // immediately on startup instead of waiting until the first sound
     // is played. This is best-effort and non-fatal.
@@ -37,7 +36,6 @@ pub fn run(dirs: &PiingDirs) -> Result<()> {
     let tray_context = tray::TrayContext {
         inherited_console_available: teamy_windows::console::is_inheriting_console(),
         config_manager: config_manager.clone(),
-        dirs: dirs.clone(),
         shutdown_tx: shutdown_tx.clone(),
     };
     tray::run_tray(&tray_context)?;

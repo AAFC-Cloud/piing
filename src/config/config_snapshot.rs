@@ -52,7 +52,8 @@ impl ConfigSnapshot {
 
     /// # Errors
     /// Returns an error if reading or parsing any config file fails
-    pub fn try_from_dir(dir: &Path) -> Result<Self> {
+    pub fn try_from_dir(dir: impl AsRef<Path>) -> Result<Self> {
+        let dir = dir.as_ref();
         let mut files = BTreeMap::new();
         let mut targets = Vec::new();
         let mut vpn_criteria = Vec::new();
