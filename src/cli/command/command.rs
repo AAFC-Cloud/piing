@@ -5,6 +5,8 @@ use crate::cli::command::sound::SoundArgs;
 use crate::cli::command::target::TargetArgs;
 use crate::cli::command::vpn::VpnArgs;
 use crate::cli::global_args::GlobalArgs;
+use crate::logging::LogWritingBehaviour;
+use crate::logging::{self};
 use clap::Subcommand;
 use eyre::Result;
 
@@ -34,9 +36,6 @@ impl Command {
     /// # Errors
     /// Returns an error if command execution or logging initialization fails
     pub fn invoke(self, globals: &GlobalArgs) -> Result<()> {
-        use crate::logging::LogWritingBehaviour;
-        use crate::logging::{self};
-
         // Determine logging behavior based on command and global args
         let log_behaviour = match &self {
             Command::Run(_) => {

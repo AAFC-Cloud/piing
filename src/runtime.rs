@@ -79,9 +79,9 @@ async fn ping_loop(
 
     loop {
         let snapshot = Config::current()?;
-        let targets = snapshot.targets;
-        let vpn_criteria = snapshot.vpn_criteria;
-        let problem_sound = snapshot.problem_sound;
+        let targets = &snapshot.targets;
+        let vpn_criteria = &snapshot.vpn_criteria;
+        let problem_sound = &snapshot.problem_sound;
         let snapshot_time = snapshot.snapshot_time;
 
         if targets.is_empty() {
@@ -91,12 +91,12 @@ async fn ping_loop(
         // Check VPN state using in-memory snapshot `vpn_criteria` to avoid
         // re-loading config on every tick. Use the shared `vpn_detector`
         // instance to keep adapter enumeration minimal.
-        let vpn_active = vpn_detector.is_vpn_active(&vpn_criteria, snapshot_time);
+        let vpn_active = vpn_detector.is_vpn_active(vpn_criteria, snapshot_time);
 
         if targets.is_empty() {
             last_success_state = None;
         } else {
-            let outcomes = run_targets(&client, &targets, vpn_active).await;
+            let outcomes = run_targets(&client, targets, vpn_active).await;
             if outcomes.iter().any(|outcome| !outcome.success)
                 && last_success_state != Some(false)
                 && let Err(error) = sound::play_problem_sound(problem_sound.clone())

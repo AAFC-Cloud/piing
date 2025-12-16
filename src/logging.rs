@@ -1,4 +1,4 @@
-use crate::config::ConfigSnapshot;
+use crate::config::Config;
 use crate::config::LatencyColouration;
 use crate::home::PIING_HOME;
 use chrono::Local;
@@ -51,8 +51,8 @@ impl LogWritingBehaviour {
 }
 
 fn load_latency_colouration() -> LatencyColouration {
-    match ConfigSnapshot::try_from_dir(PIING_HOME.config_dir()) {
-        Ok(snapshot) => snapshot.latency_colouration,
+    match Config::current() {
+        Ok(snapshot) => snapshot.latency_colouration.clone(),
         Err(error) => {
             // Logging is not yet initialised, so keep this minimal.
             eprintln!(

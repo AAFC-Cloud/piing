@@ -5,14 +5,15 @@ use eyre::Context as _;
 use eyre::Result;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::RwLock;
 
 /// Global holder for the current config snapshot (or the error encountered when loading it).
 /// Use [`Config::current()`] to get the latest `ConfigSnapshot`.
 /// Use [`Config::load()`] to refresh it from disk.
-static CONFIG: LazyLock<RwLock<Result<ConfigSnapshot>>> = LazyLock::new(|| {
-    let initial = ConfigSnapshot::try_from_dir(PIING_HOME.config_dir());
+static CONFIG: LazyLock<RwLock<Result<Arc<ConfigSnapshot>>>> = LazyLock::new(|| {
+    let initial = ConfigSnapshot::try_from_dir(PIING_HOME.config_dir()).map(Arc::new);
     RwLock::new(initial)
 });
 
@@ -32,10 +33,10 @@ impl Config {
     /// # Errors
     /// Returns an error if the most recent attempt to load configuration
     /// files failed; the underlying error message will be returned.
-    pub fn current() -> Result<ConfigSnapshot> {
+    pub fn current() -> Result<Arc<ConfigSnapshot>> {
         let guard = CONFIG.read().unwrap();
         match guard.as_ref() {
-            Ok(snapshot) => Ok(snapshot.clone()),
+            Ok(snapshot) => Ok(Arc::clone(snapshot)),
             Err(e) => Err(eyre::eyre!(e.to_string())),
         }
     }
@@ -47,10 +48,11 @@ impl Config {
     ///
     /// # Panics
     /// Panics if the internal `RwLock` for `CONFIG` is poisoned.
-    pub fn load() -> Result<ConfigSnapshot> {
+    pub fn load() -> Result<Arc<ConfigSnapshot>> {
         let snapshot = ConfigSnapshot::try_from_dir(PIING_HOME.config_dir())?;
-        *CONFIG.write().unwrap() = Ok(snapshot.clone());
-        Ok(snapshot)
+        let arc = Arc::new(snapshot);
+        *CONFIG.write().unwrap() = Ok(Arc::clone(&arc));
+        Ok(arc)
     }
 
     /// Generate a unique file path in the config directory for the given `stem`.
