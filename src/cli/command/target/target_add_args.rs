@@ -1,6 +1,6 @@
-use crate::config::ConfigPaths;
-use crate::config::targets::build_block;
-use crate::config::targets::sanitize_label;
+use crate::config::Config;
+use crate::config::build_target_block;
+use crate::config::sanitize_label;
 use crate::ping::PingMode;
 use crate::ping::parse_destination;
 use clap::Args;
@@ -31,10 +31,6 @@ impl TargetAddArgs {
             eyre::bail!("Target value cannot be empty");
         }
 
-        let paths = ConfigPaths::new();
-        paths.ensure_defaults()?;
-
-        let snapshot = paths.load_snapshot()?;
         let requested_name = self
             .name
             .as_deref()
@@ -44,7 +40,7 @@ impl TargetAddArgs {
             eyre::bail!("Unable to derive a valid target name");
         }
 
-        if snapshot
+        if Config::current()?
             .targets
             .iter()
             .any(|target| target.id.name.eq_ignore_ascii_case(&sanitized))
@@ -53,10 +49,10 @@ impl TargetAddArgs {
         }
 
         let destination = parse_destination(self.value.trim(), self.mode);
-        let block = build_block(&sanitized, &destination, self.mode, self.interval);
+        let block = build_target_block(&sanitized, &destination, self.mode, self.interval);
         let body = Body::builder().block(block).build();
-        let file_path = paths.unique_file_path(&sanitized);
-        paths.write_body(&file_path, &body)?;
+        let file_path = Config::unique_file_path(&sanitized);
+        Config::write_body(&file_path, &body)?;
 
         println!(
             "Added target '{}' ({}) with {} mode every {} (file: {})",

@@ -1,4 +1,4 @@
-use crate::config::ConfigManager;
+use crate::config::Config;
 use crate::sound;
 use clap::Args;
 use clap::Subcommand;
@@ -27,9 +27,7 @@ impl SoundTestArgs {
     /// # Errors
     /// Returns an error if loading config or playing the sound fails
     pub fn invoke(self) -> Result<()> {
-        let config_manager = ConfigManager::initialize()?;
-        let snapshot = config_manager.store.snapshot();
-        let sound_cfg = snapshot.problem_sound.clone();
+        let sound_cfg = Config::current()?.problem_sound.clone();
         println!(
             "Playing configured problem sound: {}",
             sound_cfg.path().display()

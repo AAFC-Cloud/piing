@@ -1,4 +1,4 @@
-use crate::config::ConfigPaths;
+// No longer require `ConfigPaths` for remove stub
 use clap::Args;
 use eyre::Result;
 
@@ -8,7 +8,7 @@ pub struct RemoveArgs {}
 impl RemoveArgs {
     /// # Errors
     /// Returns an error if the command fails
-    pub fn invoke(self, _paths: &ConfigPaths) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         // TODO: Implement removing VPN adapters
         println!("Stub: Remove VPN adapters");
         Ok(())

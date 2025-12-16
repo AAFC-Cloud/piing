@@ -1,6 +1,5 @@
-use crate::config::ConfigManager;
-use crate::config::ConfigStore;
-use crate::config::targets::Target;
+use crate::config::Config;
+use crate::config::Target;
 use crate::ping::PingOutcome;
 use crate::ping::{self};
 use crate::sound;
@@ -23,19 +22,17 @@ use windows::core::w;
 /// # Errors
 /// Returns an error if runtime initialization or tray execution fails
 pub fn run() -> Result<()> {
-    let config_manager = retry_config_operation(None, ConfigManager::initialize)?;
+    retry_config_operation(None, Config::load)?;
     // Pre-warm audio so the process appears in the Windows volume mixer
     // immediately on startup instead of waiting until the first sound
     // is played. This is best-effort and non-fatal.
     sound::prewarm_audio_session();
 
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
-    let ping_store = config_manager.store.clone();
-    let worker_handle = spawn_ping_runtime(ping_store, shutdown_rx);
+    let worker_handle = spawn_ping_runtime(shutdown_rx);
 
     let tray_context = tray::TrayContext {
         inherited_console_available: teamy_windows::console::is_inheriting_console(),
-        config_manager: config_manager.clone(),
         shutdown_tx: shutdown_tx.clone(),
     };
     tray::run_tray(&tray_context)?;
@@ -45,10 +42,7 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-fn spawn_ping_runtime(
-    store: ConfigStore,
-    mut shutdown_rx: watch::Receiver<bool>,
-) -> thread::JoinHandle<()> {
+fn spawn_ping_runtime(mut shutdown_rx: watch::Receiver<bool>) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -63,7 +57,7 @@ fn spawn_ping_runtime(
                     return;
                 }
             };
-            if let Err(e) = ping_loop(store, client, &mut shutdown_rx).await {
+            if let Err(e) = ping_loop(client, &mut shutdown_rx).await {
                 error!("Ping runtime encountered an error: {e}");
             }
         });
@@ -73,7 +67,6 @@ fn spawn_ping_runtime(
 const DEFAULT_INTERVAL: Duration = Duration::from_secs(1);
 
 async fn ping_loop(
-    config_store: ConfigStore,
     client: reqwest::Client,
     shutdown_rx: &mut watch::Receiver<bool>,
 ) -> eyre::Result<()> {
@@ -85,7 +78,7 @@ async fn ping_loop(
     let mut vpn_detector = VpnDetector::new();
 
     loop {
-        let snapshot = config_store.snapshot();
+        let snapshot = Config::current()?;
         let targets = snapshot.targets;
         let vpn_criteria = snapshot.vpn_criteria;
         let problem_sound = snapshot.problem_sound;

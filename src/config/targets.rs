@@ -33,12 +33,17 @@ pub struct Target {
 impl Target {
     #[must_use]
     pub fn block(&self) -> Block {
-        build_block(&self.id.name, &self.value, self.mode, self.interval)
+        build_target_block(&self.id.name, &self.value, self.mode, self.interval)
     }
 }
 
 #[must_use]
-pub fn build_block(name: &str, value: &Destination, mode: PingMode, interval: Duration) -> Block {
+pub fn build_target_block(
+    name: &str,
+    value: &Destination,
+    mode: PingMode,
+    interval: Duration,
+) -> Block {
     let mut block = Block::builder(Ident::new("resource"))
         .label("piing_target")
         .label(name)

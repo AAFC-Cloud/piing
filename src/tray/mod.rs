@@ -1,6 +1,5 @@
 mod window_proc;
 
-use crate::config::ConfigManager;
 use eyre::Context;
 use eyre::Result;
 use eyre::eyre;
@@ -28,7 +27,6 @@ use windows::core::w;
 #[derive(Debug)]
 pub struct TrayContext {
     pub inherited_console_available: bool,
-    pub config_manager: ConfigManager,
     pub shutdown_tx: watch::Sender<bool>,
 }
 
@@ -98,7 +96,6 @@ pub fn run_tray(context: &TrayContext) -> Result<()> {
     window_proc::configure(window_proc::TrayWindowConfig {
         inherited_console_available: started_with_inherited_console,
         log_buffer: LOG_BUFFER.clone(),
-        config_manager: context.config_manager.clone(),
         shutdown_tx: context.shutdown_tx.clone(),
     })?;
 

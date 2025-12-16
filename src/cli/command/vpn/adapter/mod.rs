@@ -3,7 +3,7 @@ pub mod get_path;
 pub mod list;
 pub mod remove;
 
-use crate::config::ConfigPaths;
+// `ConfigPaths` not required here; use global helpers where necessary
 use clap::Args;
 use clap::Subcommand;
 use eyre::Result;
@@ -29,12 +29,12 @@ pub enum AdapterCommand {
 impl AdapterArgs {
     /// # Errors
     /// Returns an error if the command fails
-    pub fn invoke(self, paths: &ConfigPaths) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         match self.command {
-            AdapterCommand::Add(args) => args.invoke(paths)?,
-            AdapterCommand::Remove(args) => args.invoke(paths)?,
-            AdapterCommand::List(args) => args.invoke(paths)?,
-            AdapterCommand::GetPath(args) => args.invoke(paths)?,
+            AdapterCommand::Add(args) => args.invoke()?,
+            AdapterCommand::Remove(args) => args.invoke()?,
+            AdapterCommand::List(args) => args.invoke()?,
+            AdapterCommand::GetPath(args) => args.invoke()?,
         }
         Ok(())
     }

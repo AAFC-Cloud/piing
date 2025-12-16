@@ -1,7 +1,6 @@
 pub mod adapter;
 pub mod check;
 
-use crate::config::ConfigPaths;
 use clap::Args;
 use clap::Subcommand;
 use eyre::Result;
@@ -24,12 +23,9 @@ impl VpnArgs {
     /// # Errors
     /// Returns an error if the command fails
     pub fn invoke(self) -> Result<()> {
-        let paths = ConfigPaths::new();
-        paths.ensure_defaults()?;
-
         match self.command {
-            VpnCommand::Check(args) => args.invoke(&paths)?,
-            VpnCommand::Adapter(args) => args.invoke(&paths)?,
+            VpnCommand::Check(args) => args.invoke()?,
+            VpnCommand::Adapter(args) => args.invoke()?,
         }
         Ok(())
     }

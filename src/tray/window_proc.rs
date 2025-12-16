@@ -1,5 +1,5 @@
 use crate::cli::command::audit::AuditArgs;
-use crate::config::ConfigManager;
+use crate::config::Config;
 use crate::home::PIING_HOME;
 use crate::sound;
 use crate::tray::current_tray_icon;
@@ -71,14 +71,13 @@ const CMD_EXIT_APP: usize = 0x2006;
 pub struct TrayWindowConfig {
     pub inherited_console_available: bool,
     pub log_buffer: BufferSink,
-    pub config_manager: ConfigManager,
     pub shutdown_tx: ShutdownSender,
 }
 
-static CONFIG: OnceLock<TrayWindowConfig> = OnceLock::new();
+static TRAY_CONFIG: OnceLock<TrayWindowConfig> = OnceLock::new();
 
 pub fn configure(config: TrayWindowConfig) -> Result<()> {
-    CONFIG
+    TRAY_CONFIG
         .set(config)
         .map_err(|_| eyre!("Tray window already configured"))
 }
@@ -94,7 +93,6 @@ struct TrayWindowState {
     console_mode: ConsoleMode,
     inherited_console_available: bool,
     log_buffer: BufferSink,
-    config_manager: ConfigManager,
     shutdown_tx: ShutdownSender,
 }
 
@@ -109,7 +107,6 @@ impl TrayWindowState {
             console_mode,
             inherited_console_available: config.inherited_console_available,
             log_buffer: config.log_buffer.clone(),
-            config_manager: config.config_manager.clone(),
             shutdown_tx: config.shutdown_tx.clone(),
         }
     }
@@ -176,20 +173,23 @@ impl TrayWindowState {
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn reload_config(&self, owner: HWND) {
-        match retry_config_operation(Some(owner), || self.config_manager.reload()) {
-            Ok(snapshot) => {
-                let target_count = snapshot.targets.len();
-                info!(targets = target_count, "Configuration reloaded");
-            }
+        match retry_config_operation(Some(owner), Config::load) {
+            Ok(snapshot) => info!(targets = snapshot.targets.len(), "Configuration reloaded"),
             Err(error) => error!("Configuration reload aborted: {error}"),
         }
     }
 
+    #[allow(clippy::unused_self)]
     fn play_problem_sound(&self) {
-        let snapshot = self.config_manager.store.snapshot();
-        if let Err(error) = sound::play_problem_sound(snapshot.problem_sound.clone()) {
-            error!("Failed to play problem sound: {error}");
+        match Config::current() {
+            Ok(snapshot) => {
+                if let Err(error) = sound::play_problem_sound(snapshot.problem_sound.clone()) {
+                    error!("Failed to play problem sound: {error}");
+                }
+            }
+            Err(error) => error!("Failed to play problem sound: {error}"),
         }
     }
 
@@ -312,7 +312,7 @@ pub unsafe extern "system" fn window_proc(
 ) -> LRESULT {
     match message {
         WM_CREATE => {
-            if let Some(config) = CONFIG.get() {
+            if let Some(config) = TRAY_CONFIG.get() {
                 store_state(hwnd, Box::new(TrayWindowState::new(config)));
                 LRESULT(0)
             } else {

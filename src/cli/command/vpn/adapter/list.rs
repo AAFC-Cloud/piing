@@ -1,4 +1,5 @@
-use crate::config::ConfigPaths;
+// uses `current_snapshot()` from `crate::config`
+use crate::config::Config;
 use clap::Args;
 use eyre::Result;
 use owo_colors::OwoColorize;
@@ -18,15 +19,16 @@ pub struct ListArgs {
 impl ListArgs {
     /// # Errors
     /// Returns an error if the command fails
-    pub fn invoke(self, paths: &ConfigPaths) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         let adapters = NetworkAdapters::new()?;
-        let snapshot = paths.load_snapshot()?;
-        let criteria = &snapshot.vpn_criteria;
+        let criteria = &Config::current()?.vpn_criteria;
         let mut matched_criteria: HashSet<String> = HashSet::new();
 
         // Collect matched criteria from all adapters
         for adapter in &adapters {
-            let is_vpn = criteria.iter().any(|c| c.matches(adapter));
+            let is_vpn = criteria
+                .iter()
+                .any(|c: &crate::config::VpnCriterion| c.matches(adapter));
             if is_vpn {
                 matched_criteria.insert(adapter.display_name().to_string());
             }
@@ -38,7 +40,9 @@ impl ListArgs {
             if !self.all && !is_up {
                 continue;
             }
-            let is_vpn = criteria.iter().any(|c| c.matches(adapter));
+            let is_vpn = criteria
+                .iter()
+                .any(|c: &crate::config::VpnCriterion| c.matches(adapter));
             let emoji = if !is_up {
                 "⭕"
             } else if is_vpn {

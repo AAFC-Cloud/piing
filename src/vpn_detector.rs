@@ -1,4 +1,4 @@
-use crate::config::vpn_criterion::VpnCriterion;
+use crate::config::VpnCriterion;
 use eyre::Result;
 use std::time::Duration;
 use std::time::Instant;

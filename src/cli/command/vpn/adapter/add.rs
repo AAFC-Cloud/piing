@@ -1,6 +1,6 @@
-use crate::config::ConfigPaths;
-use crate::config::targets::sanitize_label;
-use crate::config::vpn_criterion::VpnCriterion;
+use crate::config::Config;
+use crate::config::VpnCriterion;
+use crate::config::sanitize_label;
 use clap::Args;
 use cloud_terrastodon_user_input::Choice;
 use cloud_terrastodon_user_input::PickerTui;
@@ -17,7 +17,7 @@ pub struct AddArgs {}
 impl AddArgs {
     /// # Errors
     /// Returns an error if the command fails
-    pub fn invoke(self, paths: &ConfigPaths) -> Result<()> {
+    pub fn invoke(self) -> Result<()> {
         let adapters = NetworkAdapters::new()?;
         let choices: Vec<Choice<IP_ADAPTER_ADDRESSES_LH>> = adapters
             .iter()
@@ -52,8 +52,8 @@ impl AddArgs {
         }
 
         let body = body.build();
-        let file_path = paths.unique_file_path("vpn");
-        paths.write_body(&file_path, &body)?;
+        let file_path = Config::unique_file_path("vpn");
+        Config::write_body(&file_path, &body)?;
         println!("Saved VPN adapter criteria to {}", file_path.display());
         Ok(())
     }

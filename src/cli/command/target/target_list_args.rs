@@ -1,4 +1,4 @@
-use crate::config::ConfigPaths;
+use crate::config::Config;
 use clap::Args;
 use eyre::Result;
 
@@ -9,10 +9,7 @@ impl TargetListArgs {
     /// # Errors
     /// Returns an error if config operations fail
     pub fn invoke(self) -> Result<()> {
-        let paths = ConfigPaths::new();
-        paths.ensure_defaults()?;
-        let snapshot = paths.load_snapshot()?;
-        let targets = &snapshot.targets;
+        let targets = &Config::current()?.targets;
 
         if targets.is_empty() {
             println!("No targets configured.");

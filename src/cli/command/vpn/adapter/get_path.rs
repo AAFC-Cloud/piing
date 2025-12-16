@@ -1,4 +1,4 @@
-use crate::config::ConfigPaths;
+use crate::home::PIING_HOME;
 use clap::Args;
 use eyre::Result;
 
@@ -8,8 +8,8 @@ pub struct GetPathArgs {}
 impl GetPathArgs {
     /// # Errors
     /// Returns an error if the command fails
-    pub fn invoke(self, paths: &ConfigPaths) -> Result<()> {
-        println!("{}", paths.config_dir().display());
+    pub fn invoke(self) -> Result<()> {
+        println!("{}", PIING_HOME.config_dir().display());
         Ok(())
     }
 }
