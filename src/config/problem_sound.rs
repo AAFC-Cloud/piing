@@ -7,22 +7,94 @@ use hcl::edit::structure::Attribute;
 use hcl::edit::structure::Block;
 use hcl::edit::structure::Body;
 use hcl::edit::structure::Structure;
+use std::fmt;
+use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 pub const DEFAULT_PROBLEM_SOUND_PATH: &str = r"C:\Windows\Media\Speech Off.wav";
 const DEFAULT_VOLUME: f32 = 1.0;
+
+/// Controls when the problem sound is played.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SoundMode {
+    /// Never play the sound.
+    Never,
+    /// Always play the sound when a problem is detected.
+    #[default]
+    Always,
+    /// Play the sound only when not connected to a VPN.
+    NotOnVpn,
+}
+
+impl SoundMode {
+    /// Returns the HCL attribute value for this mode.
+    #[must_use]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Never => "never",
+            Self::Always => "always",
+            Self::NotOnVpn => "not_vpn",
+        }
+    }
+}
+
+impl fmt::Display for SoundMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FromStr for SoundMode {
+    type Err = eyre::Report;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "never" => Ok(Self::Never),
+            "always" => Ok(Self::Always),
+            "not_vpn" => Ok(Self::NotOnVpn),
+            _ => Err(eyre::eyre!(
+                "Invalid sound mode '{s}'; expected 'never', 'always', or 'not_vpn'"
+            )),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ProblemSound {
     path: PathBuf,
     volume: f32,
+    mode: SoundMode,
+    /// The config file where this problem sound is defined, if known.
+    source_file: Option<PathBuf>,
 }
 
 impl ProblemSound {
     #[must_use]
     pub fn new(path: PathBuf, volume: f32) -> Self {
-        Self { path, volume }
+        Self {
+            path,
+            volume,
+            mode: SoundMode::default(),
+            source_file: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_mode(path: PathBuf, volume: f32, mode: SoundMode) -> Self {
+        Self {
+            path,
+            volume,
+            mode,
+            source_file: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_source(mut self, source_file: PathBuf) -> Self {
+        self.source_file = Some(source_file);
+        self
     }
 
     #[must_use]
@@ -33,6 +105,16 @@ impl ProblemSound {
     #[must_use]
     pub fn volume(&self) -> f32 {
         self.volume
+    }
+
+    #[must_use]
+    pub fn mode(&self) -> SoundMode {
+        self.mode
+    }
+
+    #[must_use]
+    pub fn source_file(&self) -> Option<&Path> {
+        self.source_file.as_deref()
     }
 }
 
@@ -98,16 +180,36 @@ pub fn decode_problem_sound(file_path: &Path, body: &Body) -> Result<Option<Prob
             None => DEFAULT_VOLUME,
         };
 
-        sound = Some(ProblemSound::new(path, volume));
+        let mode = match block.body.get_attribute("when") {
+            Some(attr) => {
+                let mode_str = attr.value.as_str().ok_or_else(|| {
+                    eyre::eyre!(
+                        "Attribute 'when' must be a string in piing_problem_sound block inside {}",
+                        file_path.display()
+                    )
+                })?;
+                mode_str.parse::<SoundMode>().wrap_err_with(|| {
+                    format!(
+                        "Invalid 'when' value in piing_problem_sound block inside {}",
+                        file_path.display()
+                    )
+                })?
+            }
+            None => SoundMode::default(),
+        };
+
+        sound = Some(
+            ProblemSound::with_mode(path, volume, mode).with_source(file_path.to_path_buf()),
+        );
     }
 
     Ok(sound)
 }
 
 /// Build a default `piing_problem_sound` resource body with the provided name,
-/// `path`, and `volume`.
+/// `path`, `volume`, and `mode`.
 #[must_use]
-pub fn build_problem_sound_body(name: &str, path: &Path, volume: f32) -> Body {
+pub fn build_problem_sound_body(name: &str, path: &Path, volume: f32, mode: SoundMode) -> Body {
     let mut block = Block::builder(Ident::new("resource"))
         .label("piing_problem_sound")
         .label(name)
@@ -124,9 +226,69 @@ pub fn build_problem_sound_body(name: &str, path: &Path, volume: f32) -> Body {
         Decorated::new(Ident::new("volume")),
         Expression::String(Decorated::new(volume.to_string())),
     ));
+    body = body.attribute(Attribute::new(
+        Decorated::new(Ident::new("when")),
+        Expression::String(Decorated::new(mode.to_string())),
+    ));
 
     block.body = body.build();
     Body::builder().block(block).build()
+}
+
+/// Update the `when` attribute in the problem sound config file.
+///
+/// This function reads the config file, finds the `piing_problem_sound` block,
+/// updates the `when` attribute, and writes the file back.
+///
+/// # Errors
+/// Returns an error if the source file is unknown, the file cannot be read/written,
+/// or the HCL cannot be parsed.
+pub fn update_sound_mode(sound: &ProblemSound, new_mode: SoundMode) -> Result<()> {
+    let source_file = sound
+        .source_file()
+        .ok_or_else(|| eyre::eyre!("Cannot update sound mode: source file unknown"))?;
+
+    let content = fs::read_to_string(source_file)
+        .wrap_err_with(|| format!("Failed to read config file: {}", source_file.display()))?;
+
+    let mut body: Body = hcl::edit::parser::parse_body(&content)
+        .wrap_err_with(|| format!("Failed to parse config file: {}", source_file.display()))?;
+
+    // Find and update the piing_problem_sound block
+    let mut found = false;
+    for mut structure in &mut body {
+        let Some(block) = structure.as_block_mut() else {
+            continue;
+        };
+        let mut labels = block.labels.iter();
+        let Some(resource_type) = labels.next() else {
+            continue;
+        };
+        if resource_type.as_str() != "piing_problem_sound" {
+            continue;
+        }
+
+        // Remove existing 'when' attribute if present, then push the new one
+        block.body.remove_attribute("when");
+        block.body.push(Attribute::new(
+            Decorated::new(Ident::new("when")),
+            Expression::String(Decorated::new(new_mode.to_string())),
+        ));
+        found = true;
+        break;
+    }
+
+    if !found {
+        return Err(eyre::eyre!(
+            "No piing_problem_sound block found in {}",
+            source_file.display()
+        ));
+    }
+
+    fs::write(source_file, body.to_string())
+        .wrap_err_with(|| format!("Failed to write config file: {}", source_file.display()))?;
+
+    Ok(())
 }
 
 fn validate_sound_path(path: &Path) -> Result<()> {

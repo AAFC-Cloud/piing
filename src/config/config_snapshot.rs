@@ -111,12 +111,13 @@ impl ConfigSnapshot {
         if !problem_sound_found {
             // Write a default problem sound block to the config dir so users see the
             // default and can modify it if desired.
+            let file_path = unique_file_path(dir, "problem_sound");
             let body = build_problem_sound_body(
                 "problem_sound",
                 resolved_problem_sound.path(),
                 resolved_problem_sound.volume(),
+                resolved_problem_sound.mode(),
             );
-            let file_path = unique_file_path(dir, "problem_sound");
             if let Some(parent) = file_path.parent() {
                 fs::create_dir_all(parent)?;
             }

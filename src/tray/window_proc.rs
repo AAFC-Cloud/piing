@@ -1,5 +1,7 @@
 use crate::cli::command::audit::AuditArgs;
 use crate::config::Config;
+use crate::config::SoundMode;
+use crate::config::update_sound_mode;
 use crate::home::PIING_HOME;
 use crate::sound;
 use crate::tray::current_tray_icon;
@@ -27,6 +29,7 @@ use windows::Win32::Foundation::POINT;
 use windows::Win32::Foundation::WPARAM;
 use windows::Win32::System::Console::ATTACH_PARENT_PROCESS;
 use windows::Win32::UI::WindowsAndMessaging::AppendMenuW;
+use windows::Win32::UI::WindowsAndMessaging::CheckMenuRadioItem;
 use windows::Win32::UI::WindowsAndMessaging::CreatePopupMenu;
 use windows::Win32::UI::WindowsAndMessaging::DefWindowProcW;
 use windows::Win32::UI::WindowsAndMessaging::DestroyMenu;
@@ -37,6 +40,7 @@ use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 use windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW;
 use windows::Win32::UI::WindowsAndMessaging::MF_BYCOMMAND;
 use windows::Win32::UI::WindowsAndMessaging::MF_GRAYED;
+use windows::Win32::UI::WindowsAndMessaging::MF_POPUP;
 use windows::Win32::UI::WindowsAndMessaging::MF_SEPARATOR;
 use windows::Win32::UI::WindowsAndMessaging::MF_STRING;
 use windows::Win32::UI::WindowsAndMessaging::PostMessageW;
@@ -66,6 +70,11 @@ const CMD_RELOAD_CONFIG: usize = 0x2003;
 const CMD_PLAY_SOUND: usize = 0x2004;
 const CMD_AUDIT: usize = 0x2005;
 const CMD_EXIT_APP: usize = 0x2006;
+
+// Sound mode submenu commands
+const CMD_SOUND_OFF: usize = 0x2010;
+const CMD_SOUND_NOT_VPN: usize = 0x2011;
+const CMD_SOUND_ALWAYS: usize = 0x2012;
 
 #[derive(Clone)]
 pub struct TrayWindowConfig {
@@ -206,10 +215,29 @@ impl TrayWindowState {
         }
     }
 
+    #[allow(clippy::unused_self)]
+    fn set_sound_mode(&self, mode: SoundMode) {
+        match Config::current() {
+            Ok(snapshot) => {
+                if let Err(error) = update_sound_mode(&snapshot.problem_sound, mode) {
+                    error!("Failed to update sound mode: {error}");
+                } else {
+                    info!(mode = %mode, "Sound mode updated");
+                    // Reload config to pick up the change
+                    if let Err(error) = Config::load() {
+                        error!("Failed to reload config after sound mode change: {error}");
+                    }
+                }
+            }
+            Err(error) => error!("Failed to get current config: {error}"),
+        }
+    }
+
     fn request_exit(&self) {
         let _ = self.shutdown_tx.send(true);
     }
 
+    #[allow(clippy::too_many_lines)]
     fn show_context_menu(&mut self, hwnd: HWND) {
         let _ = unsafe { SetForegroundWindow(hwnd) }.ok();
         let menu = match unsafe { CreatePopupMenu() } {
@@ -220,11 +248,50 @@ impl TrayWindowState {
             }
         };
 
+        // Create sound mode submenu
+        let sound_submenu = match unsafe { CreatePopupMenu() } {
+            Ok(submenu) => submenu,
+            Err(error) => {
+                error!("Failed to create sound submenu: {error}");
+                unsafe { DestroyMenu(menu) }.ok();
+                return;
+            }
+        };
+
+        unsafe { AppendMenuW(sound_submenu, MF_STRING, CMD_SOUND_OFF, w!("Off")) }.ok();
+        unsafe { AppendMenuW(sound_submenu, MF_STRING, CMD_SOUND_NOT_VPN, w!("When not on VPN")) }
+            .ok();
+        unsafe { AppendMenuW(sound_submenu, MF_STRING, CMD_SOUND_ALWAYS, w!("Always")) }.ok();
+
+        // Check the current sound mode
+        if let Ok(snapshot) = Config::current() {
+            let (first, last) = (
+                u32::try_from(CMD_SOUND_OFF).expect("CMD_SOUND_OFF fits in u32"),
+                u32::try_from(CMD_SOUND_ALWAYS).expect("CMD_SOUND_ALWAYS fits in u32"),
+            );
+            let checked = match snapshot.problem_sound.mode() {
+                SoundMode::Never => CMD_SOUND_OFF,
+                SoundMode::NotOnVpn => CMD_SOUND_NOT_VPN,
+                SoundMode::Always => CMD_SOUND_ALWAYS,
+            };
+            let checked_u32 = u32::try_from(checked).expect("checked cmd fits in u32");
+            let _ = unsafe { CheckMenuRadioItem(sound_submenu, first, last, checked_u32, MF_BYCOMMAND.0) };
+        }
+
         unsafe { AppendMenuW(menu, MF_STRING, CMD_SHOW_LOGS, w!("Show logs")) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_HIDE_LOGS, w!("Hide logs")) }.ok();
         unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null()) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_OPEN_HOME, w!("Open home folder")) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_RELOAD_CONFIG, w!("Reload config")) }.ok();
+        unsafe {
+            AppendMenuW(
+                menu,
+                MF_STRING | MF_POPUP,
+                sound_submenu.0 as usize,
+                w!("Sound"),
+            )
+        }
+        .ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_PLAY_SOUND, w!("Play sound")) }.ok();
         unsafe { AppendMenuW(menu, MF_STRING, CMD_AUDIT, w!("Audit")) }.ok();
         unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null()) }.ok();
@@ -273,6 +340,9 @@ impl TrayWindowState {
             CMD_HIDE_LOGS => self.hide_logs(),
             CMD_OPEN_HOME => Self::open_home_folder(),
             CMD_RELOAD_CONFIG => self.reload_config(hwnd),
+            CMD_SOUND_OFF => self.set_sound_mode(SoundMode::Never),
+            CMD_SOUND_NOT_VPN => self.set_sound_mode(SoundMode::NotOnVpn),
+            CMD_SOUND_ALWAYS => self.set_sound_mode(SoundMode::Always),
             CMD_PLAY_SOUND => self.play_problem_sound(),
             CMD_AUDIT => self.run_audit(),
             CMD_EXIT_APP => {

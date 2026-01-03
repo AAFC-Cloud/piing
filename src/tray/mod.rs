@@ -45,7 +45,8 @@ fn current_icon_slot() -> &'static Mutex<Option<isize>> {
 pub fn current_tray_icon() -> Option<HICON> {
     current_icon_slot()
         .lock()
-        .unwrap()
+        .ok()
+        .and_then(|guard| guard.as_ref().cloned())
         .map(|bits| HICON(bits as *mut c_void))
 }
 
