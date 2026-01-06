@@ -97,11 +97,24 @@ async fn ping_loop(
             last_success_state = None;
         } else {
             let outcomes = run_targets(&client, targets, vpn_active).await;
-            if outcomes.iter().any(|outcome| !outcome.success)
-                && last_success_state != Some(false)
-                && let Err(error) = sound::play_problem_sound(problem_sound.clone())
-            {
-                warn!("Failed to play problem sound: {error}");
+            if outcomes.iter().any(|outcome| !outcome.success) && last_success_state != Some(false) {
+                match problem_sound.mode() {
+                    crate::config::SoundMode::Never => {
+                        // Don't play
+                    }
+                    crate::config::SoundMode::Always => {
+                        if let Err(error) = sound::play_problem_sound(problem_sound.clone()) {
+                            warn!("Failed to play problem sound: {error}");
+                        }
+                    }
+                    crate::config::SoundMode::NotOnVpn => {
+                        if !vpn_active {
+                            if let Err(error) = sound::play_problem_sound(problem_sound.clone()) {
+                                warn!("Failed to play problem sound: {error}");
+                            }
+                        }
+                    }
+                }
             }
             apply_tray_icon(&outcomes, success_icon, failure_icon);
             last_success_state = Some(outcomes.iter().all(|outcome| outcome.success));
