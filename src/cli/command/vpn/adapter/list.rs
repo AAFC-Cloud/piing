@@ -36,7 +36,7 @@ impl ListArgs {
 
         println!("Network Adapters:");
         for adapter in &adapters {
-            let is_up = adapter.peOperStatus == IfOperStatusUp;
+            let is_up = adapter.OperStatus == IfOperStatusUp;
             if !self.all && !is_up {
                 continue;
             }
